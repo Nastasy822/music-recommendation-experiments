@@ -1,0 +1,12 @@
+version: '3'
+services:
+ notebooks:
+   container_name: notebooks
+   ports:
+     - ${JUPYTERLAB_PORT}:8888
+   volumes:
+     - ${LOCAL_NOTEBOOKS_DIR}:/workspace
+
+   build: .
+   environment:
+     JUPYTER_TOKEN: ${JUPYTERLAB_TOKEN}
