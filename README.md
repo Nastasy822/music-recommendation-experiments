@@ -1,29 +1,48 @@
-## recsys-pet-project
+# recsys-pet-project
 
 This project is created to study, implement, and demonstrate different types of recommender systems.
 It aims to show how recommendation algorithms can help users discover relevant content or products by analyzing their preferences and behavior.
 The project covers the full workflow — from data preparation and model training to evaluation and deployment via an API.
 
 
-### 📊 Dataset Selection
+# 🧩 Dataset Selection
 
-The dataset for this project was chosen to provide a realistic and diverse environment for building and evaluating recommender systems.  
-It includes user–item interaction data (such as ratings, clicks, or reviews) and item metadata that can be used for both collaborative and content-based recommendation approaches.
+## 1. Chosen Dataset
 
-When selecting a dataset, the main criteria were:
+For this project, we use the **YAMBDA (Yandex Music Big Data Analytics)** dataset —  
+a large-scale, real-world dataset of user interactions from the **Yandex.Music** streaming platform.  
+It is publicly available through [🤗 Hugging Face Datasets](https://huggingface.co/datasets/yandex/yambda) and contains millions of anonymized user–track events.
 
-- **Realistic user behavior** — interactions that reflect genuine preferences  
-- **Rich content features** — product descriptions, genres, categories, or textual reviews  
-- **Sufficient scale** — enough users and items to train and validate models  
-- **Public availability** — open access for reproducibility and learning  
+---
 
-Possible datasets that meet these requirements include:
+## 2. Why This Dataset
 
-- [**MovieLens**](https://grouplens.org/datasets/movielens/) — movie ratings and genres  
-- [**Goodbooks-10k**](https://github.com/zygmuntz/goodbooks-10k) — book ratings with metadata  
-- [**Amazon Product Reviews**](https://nijianmo.github.io/amazon/index.html) — product ratings and textual reviews  
-- [**Yelp Dataset**](https://www.yelp.com/dataset) — business reviews with user feedback  
+The **YAMBDA** dataset was selected because it combines **realism, scale, and accessibility**, making it perfectly suited for research in recommendation systems and user modeling.
 
-For demonstration purposes, a subset of the **Amazon Product Reviews** dataset can be used, as it provides both explicit ratings and textual information — allowing for a balanced comparison of different recommendation strategies.
+**Key reasons:**
+- 📊 **Real user behavior:** based on genuine listening and “like” events from a real platform, not synthetic data.  
+- 💾 **Large scale:** over **50 million** interactions, enabling testing of algorithms under realistic data loads.  
+- 🕒 **Temporal data:** includes timestamps for each interaction, allowing time-based and session-aware modeling.  
+- ⚙️ **Versatility:** suitable for both classical (ALS, collaborative filtering) and modern (deep learning) recommendation methods.  
+- 🌍 **Open and reproducible:** available via Hugging Face for transparent, shareable experiments.
+
+In short — YAMBDA offers both **data realism** and **industrial-scale complexity**, essential for evaluating recommender algorithms in practice.
+
+---
+
+## 3. Dataset Structure
+
+The dataset is stored in **Parquet** format under `flat/50m/likes.parquet` and contains the following core fields:
+
+| Column | Type | Description |
+|---------|------|-------------|
+| `user_id` | `int64` | Unique anonymized user identifier |
+| `item_id` | `int64` | Unique track identifier |
+| `timestamp` | `int64` | UNIX timestamp of the event |
+| `event_type` | `string` | Type of interaction (e.g., `like`, `listen`, `skip`) |
+
+Some variations may include additional metadata fields depending on the subset.
+
+---
 
 
