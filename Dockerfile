@@ -1,30 +1,26 @@
-FROM python:3.8.10 as base
+FROM python:3.11.9-slim AS builder
 
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+ENV PATH=/opt/venv/bin:$PATH
+ENV PYTHONFAULTHANDLER=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONFAULTHANDLER 1
-ENV PYTHONUNBUFFERED 1
+WORKDIR /opt
+#
+RUN python -m pip install --upgrade pip \
+    && apt-get update \
+    && apt-get -y install gcc python3-dev \
+    && apt-get install -y --no-install-recommends git
+RUN apt-get install unzip
+#
+#
+RUN python -m venv venv
+RUN pip install -U pip setuptools
+RUN pip install poetry==1.2.2
+#
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-interaction --no-ansi --no-root
+RUN poetry shell
 
-RUN python -m pip install --upgrade pip
-
-ENV POETRY_VERSION=1.2.2
-ENV POETRY_HOME='/opt/poetry'
-ENV POETRY_VENV='/opt/poetry-venv'
-ENV POETRY_CACHE_DIR='/opt/.cache'
-ENV PYTHONPATH="${PYTHONPATH}:/workspace"
-
-WORKDIR /workspace
-COPY . /workspace
-
-RUN python -m venv $POETRY_VENV \
-    && $POETRY_VENV/bin/pip install -U pip setuptools \
-    && $POETRY_VENV/bin/pip install poetry==${POETRY_VERSION}
-
-ENV PATH="$POETRY_VENV/bin:$PATH"
-
-RUN poetry config virtualenvs.create false \
-  && poetry install
-
-CMD ["jupyter-lab","--ip=0.0.0.0","--no-browser","--allow-root"]
+COPY . .
