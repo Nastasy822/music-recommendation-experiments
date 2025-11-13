@@ -7,8 +7,18 @@
 		"context": "..",
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 		"dockerfile": "../Dockerfile"
-	}
+	},
 
+	// 
+	"runArgs": [
+		"--shm-size=8g",          // shared memory (важно для ноутбуков / multiprocessing)
+		"--memory=16g",           // лимит RAM контейнера
+		"--memory-swap=24g",      // RAM + swap (можно больше RAM)
+		"--cpus=6",               // лимит CPU ядер
+		"--ulimit", "memlock=-1", // не блокируем memlock
+		"--ulimit", "stack=67108864" // 64MB stack
+		// опционально: "--ipc=host" если активный multiprocessing
+	]
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
