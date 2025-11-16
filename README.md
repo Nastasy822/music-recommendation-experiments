@@ -157,7 +157,7 @@ flowchart LR
         ALS["CF на основе ALS"]
     end
 
-    subgraph SORTING ["Sorting — фильтрация"]
+    subgraph SORTING ["Sorting"]
         FILTER["Пока отсутствует"]
     end
 
