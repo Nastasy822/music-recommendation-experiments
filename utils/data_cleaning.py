@@ -130,6 +130,11 @@ def remove_rer_data(train_df_listen, min_item_listens = 5, min_users_listens = 2
 
     return df
 
+def remove_duplicates_by_timestamps(df):
+    return df[df.duplicated(["timestamp", "uid", "event_type"], keep=False) == False]
+
+
+
 
 # список шагов: (имя функции, функция, kwargs)
 PREPROCESSING = [
@@ -137,6 +142,7 @@ PREPROCESSING = [
     ("remove_not_valid_listen_data", remove_not_valid_listen_data, {}),
     ("cut_track_len",                cut_track_len,                {"min_limit": 60, "max_limit": 350}),
     ("remove_rer_data",              remove_rer_data,              {}),
+    ("remove_duplicates_by_timestamps",              remove_duplicates_by_timestamps,              {}),
 ]
 
 def run_listen_pipeline(df, list_of_fun):
