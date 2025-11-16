@@ -3,6 +3,10 @@ from implicit.nearest_neighbours import ItemItemRecommender
 from implicit.bpr import BayesianPersonalizedRanking
 import numpy as np
 import pandas as pd
+import polars as pl
+import faiss
+from tqdm import tqdm
+
 
 HOUR_SECONDS = 60 * 60
 DAY_SECONDS = 24 * HOUR_SECONDS
@@ -297,14 +301,6 @@ class CBF_by_metadata:
 
         return rec, []
 
-
-import pandas as pd
-import polars as pl
-
-
-import faiss
-from tqdm import tqdm
-from sklearn.pipeline import Pipeline
 
 
 def create_index(filename, item_id_map):

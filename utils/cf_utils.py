@@ -1,3 +1,6 @@
+from scipy.sparse import coo_matrix
+import numpy as np
+
 def merge_data_by_count(train_df):
     # Делай отрицательное
     train_df_implicit = (
@@ -32,9 +35,6 @@ def merge_data_by_count(train_df):
                            })
     
     return train_merge
-
-from scipy.sparse import coo_matrix
-import numpy as np
 
 def create_user_item_matrix(df):
 

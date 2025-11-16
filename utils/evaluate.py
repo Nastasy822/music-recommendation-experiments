@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from metrics import ndcg_at_k, recall_at_k
+from utils.metrics import ndcg_at_k, recall_at_k
 import numpy as np
 
 def evaluate_model(model, train_df, test_df, k=10):
