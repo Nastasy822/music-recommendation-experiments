@@ -134,34 +134,26 @@ nDCG сложнее, зато отражает реальное качество
 Первые итерации с эмбедингами - очень низкая точность. Объеснить причины
 
 
-flowchart LR
-    %% ---- PERSON ----
-    User(("Пользователь\n(слушает музыку)"))
+graph TD
 
-    %% ---- SYSTEM ----
-    API["Сервис рекомендаций\n(FastAPI / Backend)"]
+    User["Пользователь"]
 
-    ModelA["Модель A\n(например, CF)\nВыдаёт top-10 + score"]
-    ModelB["Модель B\n(например, последовательная/трендовая)\nВыдаёт top-10 + score"]
+    API["Сервис рекомендаций"]
 
-    Ranker["Мета-ранжировщик\n(CatBoostRanker)\nАгрегирует кандидатов"]
+    ModelA["Модель A<br/>Выдаёт top-10 + score"]
+    ModelB["Модель B<br/>Выдаёт top-10 + score"]
 
-    Storage[("Хранилище фич / Логи")]
+    Ranker["Мета-ранжировщик<br/>(CatBoostRanker)"]
 
-    %% ---- FLOWS ----
     User -->|Запрос рекомендаций| API
 
     API -->|Запрос кандидатов| ModelA
     API -->|Запрос кандидатов| ModelB
 
-    ModelA -->|item + score_A| API
-    ModelB -->|item + score_B| API
+    ModelA -->|Список item + score A| API
+    ModelB -->|Список item + score B| API
 
-    API -->|Кандидаты + фичи| Ranker
-    Ranker -->|Отранжированный список| API
+    API -->|Объединённые кандидаты| Ranker
+    Ranker -->|Итоговый рейтинг| API
 
-    API -->|Итоговые рекомендации| User
-
-    Ranker -->|Чтение фич| Storage
-    ModelA -->|Фичи (опционально)| Storage
-    ModelB -->|Фичи (опционально)| Storage
+    API -->|Финальные рекомендации| User
