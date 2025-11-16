@@ -162,16 +162,25 @@ flowchart LR
     end
 
     subgraph RANKING ["Ranking"]
-        RANK["CAtBoost"]
+        RANK["CatBoost"]
     end
 
     %% === Потоки данных ===
     PopAll --> FILTER
     PopUser --> FILTER
     SIM --> FILTER
+    ALS --> FILTER
 
     FILTER --> RANK
 
+    %% === Цветовые стили (Пастельные) ===
+    classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
+    classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
+    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+
+    class PopAll,PopUser,SIM,ALS retrieval;
+    class FILTER sorting;
+    class RANK ranking;
 ```
 
 
