@@ -151,10 +151,10 @@ flowchart LR
 
     %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval"]
-        POP["Тренды последних 5 дней"]
-        POP["Топ прослушанных за последние 20 дней"]
+        PopAll["Тренды последних 5 дней"]
+        PopUser["Топ прослушанных за последние 20 дней"]
         SIM["Схожесть по embedding"]
-        FRIENDS["CF на основе ALS"]
+        ALS["CF на основе ALS"]
     end
 
     subgraph SORTING ["Sorting — фильтрация"]
@@ -166,12 +166,13 @@ flowchart LR
     end
 
     %% === Потоки данных ===
-    POP --> FILTER
+    PopAll --> FILTER
+    PopUser --> FILTER
     SIM --> FILTER
-    FRIENDS --> FILTER
-    CONTENT --> FILTER
+    CONTALSENT --> FILTER
 
     FILTER --> RANK
+
 ```
 
 
