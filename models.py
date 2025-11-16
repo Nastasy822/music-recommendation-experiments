@@ -123,7 +123,7 @@ class RecentAactivityBasedRecommendation:
     def __init__(self):
         pass
 
-    def fit(self, df_merged, counts_of_days):
+    def fit(self, df_merged):
 
         likes = df_merged[df_merged["event_type"] == "like"].copy()
 
@@ -147,8 +147,6 @@ class RecentAactivityBasedRecommendation:
 
         self.likes = likes
 
-        self.timelimit = counts_of_days*DAY_SECONDS
-
         
     def ger_rec(self, uid, flag= False):
         N_ARTISTS = 100   # сколько самых популярных артистов
@@ -156,8 +154,6 @@ class RecentAactivityBasedRecommendation:
 
         user_likes =  self.likes[self.likes["uid"] == uid]
         user_item = list(user_likes["item_id"].unique())
-
-        user_likes =  user_likes[user_likes["timestamp"] > (user_likes["timestamp"].max()-self.timelimit)]
     
         # 2. Считаем, сколько лайков у каждого артиста
         artist_like_counts = (
@@ -217,7 +213,10 @@ class RecentAactivityBasedRecommendation:
         if flag:
             top_tracks_per_artist = top_tracks_per_artist[~top_tracks_per_artist["item_id"].isin(user_item)]
 
-        return top_tracks_per_artist.sort_values("track_likes", ascending = False)[:10]["item_id"].tolist(), []
+
+        top_tracks_per_artist = top_tracks_per_artist.sort_values("track_likes", ascending = False)
+
+        return top_tracks_per_artist[:10]["item_id"].tolist(), top_tracks_per_artist[:10]["artist_rank"].tolist()
 
     def recommend(self, uid, k = 10):
         rec, weights = self.ger_rec(uid) 
