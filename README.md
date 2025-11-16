@@ -155,7 +155,7 @@ flowchart LR
     subgraph RETRIEVAL ["Retrieval"]
         PopAll["Тренды последних 5 дней"]
         PopUser["Топ прослушанных за последние 20 дней"]
-        SIM["Схожесть по embedding"]
+        SIM["CBF на embedding"]
         ALS["CF на основе ALS"]
     end
 
