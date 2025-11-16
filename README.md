@@ -189,11 +189,11 @@ flowchart LR
 
 ### 📊 Recall@10
 
-<img src="./img/recall.png" width="600"/>
+<img src="./img/recall.png"/>
 
 ### 📊 NDCG@10
 
-<img src="./img/ndcg.png" width="600"/>
+<img src="./img/ndcg.png" />
 
 
 ## Выводы
