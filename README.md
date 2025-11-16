@@ -150,19 +150,19 @@ pd.DataFrame(
 flowchart LR
 
     %% === Блоки пайплайна ===
-    subgraph RETRIEVAL ["Retrieval — генерация кандидатов (мелкие модели)"]
-        POP["Популярное / сезонность"]
-        SIM["Похожие на то, что я смотрел"]
-        FRIENDS["То, что смотрели друзья"]
-        CONTENT["Content-based"]
+    subgraph RETRIEVAL ["Retrieval"]
+        POP["Тренды последних 5 дней"]
+        POP["Топ прослушанных за последние 20 дней"]
+        SIM["Схожесть по embedding"]
+        FRIENDS["CF на основе ALS"]
     end
 
     subgraph SORTING ["Sorting — фильтрация"]
-        FILTER["Фильтр: уже смотрел / старое / 'молоко'"]
+        FILTER["Пока отсутствует"]
     end
 
-    subgraph RANKING ["Ranking — финальное ранжирование"]
-        RANK["Тяжёлая модель → TOP-10"]
+    subgraph RANKING ["Ranking"]
+        RANK["CAtBoost"]
     end
 
     %% === Потоки данных ===
