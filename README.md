@@ -146,33 +146,37 @@ pd.DataFrame(
 
 ---
 
-
-
-
 ```mermaid
-graph TD
+flowchart LR
 
-    User["Пользователь"]
+    %% === Названия стадий ===
+    subgraph RETRIEVAL ["Retrieval — генерация кандидатов (мелкие модели)"]
+        POP["Популярное / сезонность"]
+        SIM["Похожие на то, что смотрел"]
+        FRIENDS["То, что смотрели друзья"]
+        CONTENT["Content-based"]
+    end
 
-    API["Сервис рекомендаций"]
+    subgraph SORTING ["Sorting — фильтрация"]
+        FILTER["Убираем: старое • уже смотрел • 'молоко'"]
+    end
 
-    ModelA["Модель A<br/>Выдаёт top-10 + score"]
-    ModelB["Модель B<br/>Выдаёт top-10 + score"]
+    subgraph RANKING ["Ranking — финальное ранжирование"]
+        RANK["Тяжёлая модель для TOP-10"]
+    end
 
-    Ranker["Мета-ранжировщик<br/>(CatBoostRanker)"]
+    %% === Потоки данных ===
+    POP --> FILTER
+    SIM --> FILTER
+    FRIENDS --> FILTER
+    CONTENT --> FILTER
 
-    User -->|Запрос рекомендаций| API
+    FILTER --> RANK
 
-    API -->|Запрос кандидатов| ModelA
-    API -->|Запрос кандидатов| ModelB
-
-    ModelA -->|Список item + score A| API
-    ModelB -->|Список item + score B| API
-
-    API -->|Объединённые кандидаты| Ranker
-    Ranker -->|Итоговый рейтинг| API
-
-    API -->|Финальные рекомендации| User
+    %% === Примечание ===
+    note bottom of RANK
+      Лучше не использовать end-to-end
+    end note
 ```
 
 
