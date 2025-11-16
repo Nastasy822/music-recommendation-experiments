@@ -149,20 +149,20 @@ pd.DataFrame(
 ```mermaid
 flowchart LR
 
-    %% === Названия стадий ===
+    %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval — генерация кандидатов (мелкие модели)"]
         POP["Популярное / сезонность"]
-        SIM["Похожие на то, что смотрел"]
+        SIM["Похожие на то, что я смотрел"]
         FRIENDS["То, что смотрели друзья"]
         CONTENT["Content-based"]
     end
 
     subgraph SORTING ["Sorting — фильтрация"]
-        FILTER["Убираем: старое • уже смотрел • 'молоко'"]
+        FILTER["Фильтр: уже смотрел / старое / 'молоко'"]
     end
 
     subgraph RANKING ["Ranking — финальное ранжирование"]
-        RANK["Тяжёлая модель для TOP-10"]
+        RANK["Тяжёлая модель → TOP-10"]
     end
 
     %% === Потоки данных ===
@@ -172,11 +172,6 @@ flowchart LR
     CONTENT --> FILTER
 
     FILTER --> RANK
-
-    %% === Примечание ===
-    note bottom of RANK
-      Лучше не использовать end-to-end
-    end note
 ```
 
 
