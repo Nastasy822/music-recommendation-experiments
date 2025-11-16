@@ -134,43 +134,34 @@ nDCG сложнее, зато отражает реальное качество
 Первые итерации с эмбедингами - очень низкая точность. Объеснить причины
 
 
-@startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+flowchart LR
+    %% ---- PERSON ----
+    User(("Пользователь\n(слушает музыку)"))
 
-Person(user, "Пользователь", "Слушает музыку и получает рекомендации")
+    %% ---- SYSTEM ----
+    API["Сервис рекомендаций\n(FastAPI / Backend)"]
 
-System_Boundary(s1, "Рекомендательная система") {
+    ModelA["Модель A\n(например, CF)\nВыдаёт top-10 + score"]
+    ModelB["Модель B\n(например, последовательная/трендовая)\nВыдаёт top-10 + score"]
 
-    Container(api, "Сервис рекомендаций", "Python / FastAPI",
-        "Принимает запрос от пользователя, вызывает модели и мета-ранжировщик")
+    Ranker["Мета-ранжировщик\n(CatBoostRanker)\nАгрегирует кандидатов"]
 
-    Container(model1, "Модель 1", "Рекомендательная модель A",
-        "Например, коллаборативная фильтрация. Возвращает top-N item + score")
+    Storage[("Хранилище фич / Логи")]
 
-    Container(model2, "Модель 2", "Рекомендательная модель B",
-        "Например, последовательная / трендовая модель. Возвращает top-N item + score")
+    %% ---- FLOWS ----
+    User -->|Запрос рекомендаций| API
 
-    Container(ranker, "Мета-ранжировщик", "CatBoostRanker",
-        "Агрегирует результаты моделей и выдаёт финальное ранжирование кандидатов")
+    API -->|Запрос кандидатов| ModelA
+    API -->|Запрос кандидатов| ModelB
 
-    ContainerDb(features, "Хранилище фич/логов", "DB / Feature Store",
-        "Логи взаимодействий, фичи для обучения и работы ранжировщика")
-}
+    ModelA -->|item + score_A| API
+    ModelB -->|item + score_B| API
 
-Rel(user, api, "Запрос рекомендаций")
-Rel(api, model1, "Запрос top-N кандидатов", "user_id, контекст")
-Rel(api, model2, "Запрос top-N кандидатов", "user_id, контекст")
+    API -->|Кандидаты + фичи| Ranker
+    Ranker -->|Отранжированный список| API
 
-Rel(model1, api, "Список item + score_1")
-Rel(model2, api, "Список item + score_2")
+    API -->|Итоговые рекомендации| User
 
-Rel(api, ranker, "Кандидаты + фичи (score_1, score_2, признаки item/user)")
-Rel(ranker, api, "Отранжированный список рекомендаций")
-
-Rel(api, user, "Итоговый список рекомендованных треков")
-
-Rel(ranker, features, "Читает фичи и логи", "во время обучения/онлайна", "R")
-Rel(model1, features, "Может использовать фичи", "опционально", "R")
-Rel(model2, features, "Может использовать фичи", "опционально", "R")
-
-@enduml
+    Ranker -->|Чтение фич| Storage
+    ModelA -->|Фичи (опционально)| Storage
+    ModelB -->|Фичи (опционально)| Storage
