@@ -169,7 +169,6 @@ flowchart LR
     PopAll --> FILTER
     PopUser --> FILTER
     SIM --> FILTER
-    CONTALSENT --> FILTER
 
     FILTER --> RANK
 
