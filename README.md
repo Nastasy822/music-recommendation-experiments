@@ -146,6 +146,8 @@ pd.DataFrame(
 
 ---
 
+## Текущая схема системы 
+
 ```mermaid
 flowchart LR
 
@@ -173,7 +175,7 @@ flowchart LR
 
     FILTER --> RANK
 
-    %% === Цветовые стили (Пастельные) ===
+    %% === Цветовые стили (Пастельные узлы, фон subgraph по умолчанию — белый) ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
     classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
