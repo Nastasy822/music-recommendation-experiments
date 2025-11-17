@@ -2,6 +2,29 @@ from tqdm import tqdm
 from utils.metrics import ndcg_at_k, recall_at_k
 import numpy as np
 
+
+def get_user_listened_items(history, uid):
+    return history[history["uid"] == uid]["item_id"].unique().tolist()
+
+
+def filtering_listened_items(train_df, uid, rec, weights, k=None):
+
+    user_listened_items = set(get_user_listened_items(train_df, uid))
+    
+    filtered_rec = []
+    filtered_weights = []
+
+
+    for item, weight in zip(rec, weights):
+        if item in user_listened_items:
+            continue
+        filtered_rec.append(item)
+        filtered_weights.append(weight)
+        
+
+    return filtered_rec, filtered_weights
+
+    
 def evaluate_model(model, train_df, test_df, k=10):
     test_df = test_df[test_df["event_type"]!="dislike"]
     grouped_users = test_df.groupby("uid")
@@ -11,7 +34,10 @@ def evaluate_model(model, train_df, test_df, k=10):
         # print(list(group["item_id"]))
         user_true = list(set(group["item_id"]))
         
-        rec, _ = model.recommend(uid, k)
+        rec, weights = model.recommend(uid)
+        
+        rec, weights = filtering_listened_items(train_df, uid, rec, weights)
+        
         recall = recall_at_k(rec, user_true,  10)
         ndcg = ndcg_at_k(rec ,user_true,  10)
         
