@@ -21,8 +21,8 @@ class MostPop_by_likes:
         self.weights = stat.tolist()
         
 
-    def recommend(self, uid, k = 10):
-        return self.rec[:k], self.weights[:k]
+    def recommend(self, uid):
+        return self.rec, self.weights
 
         
 class MostPop_by_listen:
@@ -41,8 +41,8 @@ class MostPop_by_listen:
         self.weights = stat.tolist()
         
 
-    def recommend(self, uid, k = 10):
-        return self.rec[:k], self.weights[:k]
+    def recommend(self, uid):        
+        return self.rec, self.weights
 
 
 class ALS:
@@ -52,12 +52,14 @@ class ALS:
                                 iterations=30,
                                 alpha=1,
                                 random_state=42)
-
+        self.N = 100
+        
     def fit(self, matrix):
         self.matrix = matrix
         self.model.fit(self.matrix)
 
-    def recommend(self, uid, k = 10):
+    
+    def recommend(self, uid):
         uid = int(uid)  #Обязательно принимает int, не конвертирует float 
         
         row = self.matrix[uid]
@@ -66,7 +68,7 @@ class ALS:
         rec_items, w_rec = self.model.recommend(
                                 userid=uid,
                                 user_items=self.matrix[uid],
-                                N=k,
+                                N=self.N,
                                 filter_already_liked_items=False,   
                             )
         return list(rec_items), list(w_rec)
@@ -79,8 +81,9 @@ class ItemItemRec:
     def fit(self, matrix):
         self.matrix = matrix.tocsr().astype(np.double) # Алгоритм просит именно double
         self.model.fit(self.matrix)
+        self.N = 100
 
-    def recommend(self, uid, k = 10):
+    def recommend(self, uid):
         uid = int(uid)  #Обязательно принимает int, не конвертирует float 
         
         row = self.matrix[uid]
@@ -89,7 +92,7 @@ class ItemItemRec:
         rec_items, w_rec = self.model.recommend(
                                             uid,
                                             self.matrix[uid],
-                                            N=k, 
+                                            N=self.N, 
                                         )
         return list(rec_items), list(w_rec)
 
@@ -103,12 +106,13 @@ class BPR:
                             iterations=150,
                             random_state=42,
                         )
-    
+        self.N = 100
+        
     def fit(self, matrix):
         self.matrix = matrix.tocsr()
         self.model.fit(self.matrix)
 
-    def recommend(self, uid, k = 10):
+    def recommend(self, uid):
         uid = int(uid)  #Обязательно принимает int, не конвертирует float 
         
         row = self.matrix[uid]
@@ -117,13 +121,13 @@ class BPR:
         rec_items, w_rec = self.model.recommend(
                                 userid=uid,
                                 user_items=self.matrix[uid],
-                                N=k,
+                                N=self.N,
                                 filter_already_liked_items=False,   
                             )
         return list(rec_items), list(w_rec)
 
 
-class RecentAactivityBasedRecommendation:
+class UnheardFavoritesRecommender:
     def __init__(self):
         pass
 
@@ -152,7 +156,7 @@ class RecentAactivityBasedRecommendation:
         self.likes = likes
 
         
-    def ger_rec(self, uid, flag= False):
+    def ger_rec(self, uid):
         N_ARTISTS = 100   # сколько самых популярных артистов
         N_TRACKS = 100    # сколько треков на каждого артиста
 
@@ -172,12 +176,9 @@ class RecentAactivityBasedRecommendation:
         top_artists["artist_rank"] = range(1, len(top_artists) + 1)
         
         # 4. Оставляем лайки только по этим артистам ГЛОБАЛЬНО для артистою ЮЗЕРА
-        if flag:
-            likes_top = self.likes[self.likes["artist_id"].isin(top_artists["artist_id"])]
-        else:
-            likes_top = user_likes[user_likes["artist_id"].isin(top_artists["artist_id"])]
+
+        likes_top = self.likes[self.likes["artist_id"].isin(top_artists["artist_id"])]
         
-    
         # 5. Считаем лайки по (artist_id, item_id) — популярность треков у артиста
         track_counts = (
             likes_top.groupby(["artist_id", "item_id"])
@@ -214,19 +215,141 @@ class RecentAactivityBasedRecommendation:
         ).reset_index(drop=True)
         # print(top_tracks_per_artist)
         
-        if flag:
-            top_tracks_per_artist = top_tracks_per_artist[~top_tracks_per_artist["item_id"].isin(user_item)]
+
+        top_tracks_per_artist = top_tracks_per_artist[~top_tracks_per_artist["item_id"].isin(user_item)]
 
 
         top_tracks_per_artist = top_tracks_per_artist.sort_values("track_likes", ascending = False)
 
-        return top_tracks_per_artist[:10]["item_id"].tolist(), top_tracks_per_artist[:10]["artist_rank"].tolist()
+        return top_tracks_per_artist["item_id"].tolist(), top_tracks_per_artist["artist_rank"].tolist()
+
+    def recommend(self, uid):
+        rec, weights = self.ger_rec(uid) 
+        return rec, weights
+
+
+
+class NewItemsLastNDays:
+    def __init__(self, days: int = 5, time_col: str = "timestamp"):
+        """
+        days     — за сколько последних дней считать новинки
+        time_col — название колонки с временем (у тебя 'timestamp')
+        """
+        self.days = days
+        self.time_col = time_col
+        self.rec = []
+        self.weights = []
+
+    def fit(self, df: pd.DataFrame):
+        self.history = df.copy()
+
+        max_ts = df[self.time_col].max()
+
+        HOUR_SECONDS = 60 * 60
+        DAY_SECONDS = 24 * HOUR_SECONDS
+
+        cutoff = max_ts - DAY_SECONDS * self.days
+
+        history = df[df["timestamp"]<cutoff]["item_id"].unique().tolist()
+        current = df[df["timestamp"]>=cutoff]["item_id"].unique().tolist()
+
+        new = list(set(current) - set(history))
+        
+        new_items = df[df["item_id"].isin(new)]
+
+        self.rec = new_items["item_id"].value_counts().index.tolist()
+        
+        self.weights = new_items["item_id"].value_counts().tolist()
+
+    def recommend(self, uid):
+        return self.rec, self.weights
+
+
+
+class FavoriteArtistsNewReleases:
+    def __init__(self):
+        pass
+
+    def fit(self, df_merged):
+        self.days = 30
+        
+        # находим глобальное "сейчас" по данным — максимальный timestamp в логе
+        max_ts = df_merged["timestamp"].max()
+
+        HOUR_SECONDS = 60 * 60
+        DAY_SECONDS = 24 * HOUR_SECONDS
+
+        # порог: новинки — которые ВПЕРВЫЕ появились после этого времени
+        cutoff = max_ts - DAY_SECONDS * self.days
+
+        history = df_merged[df_merged["timestamp"]<cutoff]["item_id"].unique().tolist()
+        current = df_merged[df_merged["timestamp"]>=cutoff]["item_id"].unique().tolist()
+
+        new = list(set(current) - set(history))
+        
+        self.new_items = df_merged[df_merged["item_id"].isin(new)]
+        
+        
+        likes = df_merged[df_merged["event_type"] == "like"].copy()
+
+        listen = (
+                df_merged[df_merged["event_type"] == "listen"]
+                .groupby(['uid', 'item_id'])
+                .agg({
+                    'timestamp': 'count',
+                    'artist_id': 'first',
+                    'album_id': 'first',
+                    
+                })
+                .reset_index()
+            )
+        
+        listen = listen[listen["timestamp"]>3]
+
+        likes = pd.concat([likes, listen])
+
+        self.likes = likes
+
+        
+    def ger_rec(self, uid, flag= False):
+        N_ARTISTS = 100   # сколько самых популярных артистов
+        N_TRACKS = 100    # сколько треков на каждого артиста
+
+        user_likes =  self.likes[self.likes["uid"] == uid]
+        user_item = list(user_likes["item_id"].unique())
+    
+        # 2. Считаем, сколько лайков у каждого артиста
+        artist_like_counts = (
+            user_likes.groupby("artist_id")["item_id"]
+            .count()
+            .sort_values(ascending=False)
+            .reset_index(name="artist_likes")
+        )
+        
+        # 3. Берём топ-10 артистов
+        top_artists = artist_like_counts.head(N_ARTISTS).copy()
+        top_artists["artist_rank"] = range(1, len(top_artists) + 1)
+
+        favorite_new = self.new_items[self.new_items["artist_id"].isin(top_artists["artist_id"])]
+
+        favorite_new = favorite_new.copy()
+        order = top_artists["artist_id"].tolist()
+
+        favorite_new["artist_id"] = pd.Categorical(favorite_new["artist_id"], categories=order, ordered=True)
+
+
+        
+        favorite_new = favorite_new.sort_values("artist_id")
+
+        return favorite_new["item_id"].value_counts().index.tolist(), favorite_new["item_id"].value_counts().tolist()
+ 
 
     def recommend(self, uid, k = 10):
         rec, weights = self.ger_rec(uid) 
-        return rec[:k], weights[:k]
+        
+        return rec, weights
 
-
+        
 class CBF_by_metadata:
     def __init__(self):
         pass

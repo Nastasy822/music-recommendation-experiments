@@ -160,7 +160,7 @@ flowchart LR
     end
 
     subgraph SORTING ["Sorting"]
-        FILTER["Пока отсутствует"]
+        FILTER["Фильтрафия уже просмотренных"]
     end
 
     subgraph RANKING ["Ranking"]
