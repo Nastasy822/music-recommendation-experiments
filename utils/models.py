@@ -76,7 +76,7 @@ class ALS:
 
 class ItemItemRec:
     def __init__(self):
-        self.model = ItemItemRecommender(K=200)
+        self.model = ItemItemRecommender(K=25)
 
     def fit(self, matrix):
         self.matrix = matrix.tocsr().astype(np.double) # Алгоритм просит именно double
@@ -481,7 +481,8 @@ def create_index(filename, item_id_map):
 
     return index, all_item_ids
 
-    
+
+
 class CBF_by_embeding:
     def __init__(self):
         pass
@@ -494,6 +495,7 @@ class CBF_by_embeding:
 
         
         self.total = []
+        self.N = 100
         
     # Профиль пользователя = средний вектор всех айтемов, которые он слушал.
     def build_user_profile_embed(self, uid):
@@ -503,7 +505,7 @@ class CBF_by_embeding:
         indices = [self.id2pos[iid] for iid in listened_items if iid in self.id2pos]
         self.total.append(len(indices))
         
-        if len(indices) <5:
+        if len(indices) <1:
             return None
         
 
@@ -514,9 +516,9 @@ class CBF_by_embeding:
     
         return np.array([user_vec])
 
-    def similar_tracks(self, vec, k=10): #
+    def similar_tracks(self, vec): #
 
-        sims, ids = self.index.search(vec, k+1)
+        sims, ids = self.index.search(vec, self.N+1)
     
         sims = sims[0]
         ids = ids[0]
@@ -525,15 +527,14 @@ class CBF_by_embeding:
         result = []
         for track_pos, score in zip(ids, sims):
             result.append((self.item_ids[track_pos], float(score)))
-            if len(result) == k:
-                break
 
-        return [pair[0] for pair in result[:k]], [pair[1] for pair in result[:k]] 
+        return [pair[0] for pair in result], [pair[1] for pair in result] 
 
-    def recommend(self, uid, k = 10):
+    def recommend(self, uid):
         vec = self.build_user_profile_embed(uid)
         if vec is None:
             return [], []    
         return self.similar_tracks(vec)
+
 
 
