@@ -62,7 +62,7 @@
 > Затем задача усложнилась и нужно было предсказывать взаимодействие именно с новыми песнями, которые пользователь еще не слушал. При тестировании список прослушанных песен пользователя так же фильтровался от уже прослушанных, так как система не предсказывает такие песни и нет смысла учитывать их при тестировании. Пользователи которые не слушают новые песни не включаются в оценки (модель не может угадывать то, чего не было). Для учета таких случаев будет введена отдельная метрика, показывающая вовлеченность пользователей в рекомендательную систему.
 
 
-
+!!! У Авторов не исключается из тестирования is_organic == 1 (ну либо я не нашла)
 
 
 ### Метрики
@@ -190,6 +190,34 @@ flowchart LR
     class RANK ranking;
 ```
 
+```mermaid
+C4Context
+    title Recommendation Pipeline Architecture
+
+    System(Retrieval, "Retrieval System", "Generates candidate items for recommendation")
+    System(Sorting, "Sorting System", "Filters out already viewed items")
+    System(Ranking, "Ranking System", "Ranks candidates using CatBoost model")
+
+    Container(PopAll, "PopAll", "Trending items from last 5 days")
+    Container(PopUser, "PopUser", "User's top listened tracks over past 20 days")
+    Container(SIM, "SIM", "Content-based Filtering using embeddings")
+    Container(ALS, "ALS", "Collaborative Filtering with ALS")
+
+    Container(FILTER, "FILTER", "Filter already viewed items")
+
+    Container(RANK, "RANK", "CatBoost ranking model")
+
+    Rel(PopAll, FILTER, "Feeds candidates")
+    Rel(PopUser, FILTER, "Feeds candidates")
+    Rel(SIM, FILTER, "Feeds candidates")
+    Rel(ALS, FILTER, "Feeds candidates")
+
+    Rel(FILTER, RANK, "Passes filtered candidates for ranking")
+```
+
+
+
+
 ## Эксперименты 
 
 ### 📊 Recall@10
@@ -251,3 +279,10 @@ flowchart LR
 
 
 Точность из result
+
+
+
+
+
+
+
