@@ -6,114 +6,278 @@ import pandas as pd
 import polars as pl
 import faiss
 from tqdm import tqdm
+from scipy.sparse import coo_matrix
+from utils.maps_creater import *
+from utils.data_preprocess import *
+from implicit.nearest_neighbours import ItemItemRecommender
+from implicit.nearest_neighbours import bm25_weight  # или tfidf_weight
+from implicit.nearest_neighbours import CosineRecommender
+
+import numpy as np
+import scipy.sparse as sp
+import polars as pl
+from implicit.nearest_neighbours import BM25Recommender
 
 
 HOUR_SECONDS = 60 * 60
 DAY_SECONDS = 24 * HOUR_SECONDS
 
+
+class MostPop_by_listen:
+    def __init__(self):
+        self.max_limit = 2_000
+        self.rec = []
+        self.weights = []
+        self.last_days = 5
+
+    def fit(self, lf: pl.LazyFrame):
+        max_timestamp = lf.select(pl.col("timestamp").max()).collect().to_series()[0]
+        cutoff_ts = max_timestamp - self.last_days * DAY_SECONDS
+
+        stat = (
+            lf.filter((pl.col("event_type") == "listen")
+                     & (pl.col("timestamp") > cutoff_ts))
+              .group_by("item_id")
+              .agg(pl.col("uid").n_unique().alias("unique_users"))
+              .sort("unique_users", descending=True)
+              .head(self.max_limit)
+              .collect()  # materialize LazyFrame
+        )
+        self.rec = stat["item_id"].to_list()
+        self.weights = stat["unique_users"].to_list()
+
+    def recommend(self, uid):
+        return self.rec, self.weights
+        
+
 class MostPop_by_likes:
     def __init__(self):
-        pass
+        self.max_limit = 2_000
+        self.rec = []
+        self.weights = []
+        self.last_days = 5
 
-    def fit(self, df):
-        stat = df[df["event_type"] == "like"]["item_id"].value_counts()
-        self.rec = stat.index.tolist()
-        self.weights = stat.tolist()
-        
+    def fit(self, lf: pl.LazyFrame):
+
+        max_timestamp = lf.select(pl.col("timestamp").max()).collect().to_series()[0]
+        cutoff_ts = max_timestamp - self.last_days * DAY_SECONDS
+
+        top_df = (
+            lf
+            .filter(
+                (pl.col("event_type") == "like")
+                & (pl.col("timestamp") > cutoff_ts)
+            )
+            .group_by("item_id")
+            .agg(pl.len().alias("counts"))
+            .sort("counts", descending=True)
+            .head(self.max_limit)
+            .collect()
+        )
+
+        self.rec = top_df["item_id"].to_list()
+        self.weights = top_df["counts"].to_list()
 
     def recommend(self, uid):
         return self.rec, self.weights
 
+
+class NewItemsLastNDays:
+    def __init__(self, days: int = 5, ):
+        """
+        days     — за сколько последних дней считать новинки
         
-class MostPop_by_listen:
-    def __init__(self):
-        pass
+        """
+        self.max_limit = 2_000
+        self.last_days = 5
+        self.rec = []
+        self.weights = []
 
-    def fit(self, df):
-        stat = (
-                 df[df["event_type"] == "listen"]
-                .groupby("item_id")["uid"]
-                .nunique()
-                .sort_values(ascending=False)
-                )
+    def fit(self, lf: pl.LazyFrame):
 
-        self.rec = stat.index.tolist()
-        self.weights = stat.tolist()
+        max_timestamp = lf.select(pl.col("timestamp").max()).collect().to_series()[0]
+        cutoff_ts = max_timestamp - self.last_days * DAY_SECONDS
         
+        history = (
+                lf
+                .filter(pl.col("timestamp") < cutoff_ts)
+                .select(pl.col("item_id").unique())
+                .collect()["item_id"]
+                .to_list()
+            )
+        
+        current = (
+                lf
+                .filter(pl.col("timestamp") >= cutoff_ts)
+                .select(pl.col("item_id").unique())
+                .collect()["item_id"]
+                .to_list()
+            )
 
-    def recommend(self, uid):        
+        new = list(set(current) - set(history))
+        
+        new_items = lf.filter(pl.col("item_id").is_in(new))
+
+        vc = (
+            new_items
+            .group_by("item_id")
+            .agg(pl.len().alias("count"))
+            .sort("count", descending=True)
+            .collect()
+        )
+        
+        self.rec = vc["item_id"].to_list()
+        self.weights = vc["count"].to_list()
+
+    def recommend(self, uid):
         return self.rec, self.weights
+        
+
+
+def create_user_item_matrix(dlf: pl.LazyFrame):
+    # сразу выбираем только нужные колонки и кастуем типы
+    df = (
+        dlf
+        .select([
+            pl.col("uid").cast(pl.Int32).alias("uid"),
+            pl.col("item_id").cast(pl.Int32).alias("item_id"),
+            pl.col("conf").cast(pl.Int32).alias("conf"),
+        ])
+        .collect()  # вот здесь LazyFrame -> DataFrame
+    )
+
+    rows = df["uid"].to_numpy()
+    cols = df["item_id"].to_numpy()
+    data = df["conf"].to_numpy()
+
+    mat = coo_matrix((data, (rows, cols))).tocsr()
+    return mat
 
 
 class ALS:
     def __init__(self):
         self.model = AlternatingLeastSquares(factors=128, #Размерность скрытых признаков (эмбеддингов)
-                                regularization=0.05,
-                                iterations=30,
-                                alpha=1,
-                                random_state=42)
-        self.N = 100
+                                regularization=0.001,
+                                iterations=15,
+                                # alpha=1,
+                                # use_cg=True,
+                                random_state=42,
+                                calculate_training_loss = True) 
+        self.N = 2000
         
-    def fit(self, matrix):
-        self.matrix = matrix
+    def fit(self, lf):
+        self.user_map, self.item_map = build_id_maps(lf)
+        self.reverse_item_map = {v: k for k, v in self.item_map.items()}
+        
+        lf = map_with_id_maps(lf, self.user_map, self.item_map)
+        
+        self.matrix = create_user_item_matrix(lf)
         self.model.fit(self.matrix)
 
     
     def recommend(self, uid):
-        uid = int(uid)  #Обязательно принимает int, не конвертирует float 
-        
+        uid = int(uid)  #Обязательно принимает int, не конвертирует float
+        uid = self.user_map.get(uid, None)
+        if uid is None:
+            return [], []
+            
+        # print(self.user_map)
         row = self.matrix[uid]
         if row.nnz == 0:      # nnz = number of non-zero elements
             return [], []
+            
         rec_items, w_rec = self.model.recommend(
                                 userid=uid,
                                 user_items=self.matrix[uid],
                                 N=self.N,
                                 filter_already_liked_items=False,   
                             )
-        return list(rec_items), list(w_rec)
+
+        orig_ids = [self.reverse_item_map[v] for v in rec_items]
+
+        return list(orig_ids), list(w_rec)
 
 
-class ItemItemRec:
+
+import numpy as np
+import scipy.sparse as sp
+import polars as pl
+from implicit.nearest_neighbours import BM25Recommender
+from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l2
+
+
+class BM25Rec:
     def __init__(self):
-        self.model = ItemItemRecommender(K=25)
-
-    def fit(self, matrix):
-        self.matrix = matrix.tocsr().astype(np.double) # Алгоритм просит именно double
-        self.model.fit(self.matrix)
-        self.N = 100
-
-    def recommend(self, uid):
-        uid = int(uid)  #Обязательно принимает int, не конвертирует float 
+        self.model = BM25Recommender(K=200, K1=0.1, B=0.75, num_threads=0)
+        self.N = 2000
         
+    def fit(self, lf):
+        
+        self.user_map, self.item_map = build_id_maps(lf)
+        self.reverse_item_map = {v: k for k, v in self.item_map.items()}
+        
+        lf = map_with_id_maps(lf, self.user_map, self.item_map)
+
+        self.matrix = create_user_item_matrix(lf)
+
+        
+        self.matrix = self.matrix.tocsr().astype(np.double) # Алгоритм просит именно double
+        inplace_csr_row_normalize_l2(self.matrix)  # X изменится на месте
+        
+        self.model.fit(self.matrix)
+
+    
+    def recommend(self, uid):
+        uid = int(uid)  #Обязательно принимает int, не конвертирует float
+        uid = self.user_map.get(uid, None)
+        if uid is None:
+            return [], []
+            
+        # print(self.user_map)
         row = self.matrix[uid]
         if row.nnz == 0:      # nnz = number of non-zero elements
             return [], []
+            
         rec_items, w_rec = self.model.recommend(
-                                            uid,
-                                            self.matrix[uid],
-                                            N=self.N, 
-                                        )
-        return list(rec_items), list(w_rec)
+                                userid=uid,
+                                user_items=self.matrix[uid],
+                                N=self.N,  
+                            )
+
+        orig_ids = [self.reverse_item_map[v] for v in rec_items]
+
+        return list(orig_ids), list(w_rec)
+
+        
 
 
 class BPR:
     def __init__(self):
         self.model = BayesianPersonalizedRanking(
-                            factors=128,       # размер латентного пространства
-                            learning_rate=0.1,
-                            regularization=0.01,
-                            iterations=150,
-                            random_state=42,
-                        )
-        self.N = 100
+                        factors=128,       # размер латентного пространства
+                        learning_rate=0.1,
+                        regularization=0.01,
+                        iterations=300,
+                        random_state=42,
+                    )
+
+        self.N = 2000
         
-    def fit(self, matrix):
-        self.matrix = matrix.tocsr()
-        self.model.fit(self.matrix)
+    def fit(self, lf):
+        self.user_map, self.item_map = build_id_maps(lf)
+        self.reverse_item_map = {v: k for k, v in self.item_map.items()}
+        
+        lf = map_with_id_maps(lf, self.user_map, self.item_map)
+        
+        self.matrix = create_user_item_matrix(lf)
+
+        self.model.fit(self.matrix.tocsr())
 
     def recommend(self, uid):
         uid = int(uid)  #Обязательно принимает int, не конвертирует float 
+        uid = self.user_map.get(uid, None)
+        if uid is None:
+            return [], []
         
         row = self.matrix[uid]
         if row.nnz == 0:      # nnz = number of non-zero elements
@@ -124,10 +288,95 @@ class BPR:
                                 N=self.N,
                                 filter_already_liked_items=False,   
                             )
-        return list(rec_items), list(w_rec)
+        
+        orig_ids = [self.reverse_item_map[v] for v in rec_items]
+
+        return list(orig_ids), list(w_rec)
 
 
-class UnheardFavoritesRecommender:
+
+def add_exponential_decay(train_df: pl.LazyFrame | pl.DataFrame, tau: float):
+    # 0, 0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1.0, 2
+    # Фильтрация по условиям
+    train_df = (
+        train_df
+        .filter(pl.col("played_ratio_pct") > 50)
+        .filter(pl.col("event_type") == "listen")
+        # максимум timestamp по uid
+        .with_columns(
+            pl.max("timestamp").over("uid").alias("max_timestamp")
+        )
+        # "старость" записи
+        .with_columns(
+            (pl.col("max_timestamp") - pl.col("timestamp")).alias("delta")
+        )
+        # экспоненциальное затухание, как в примере: tau ** delta
+        .with_columns(
+            (tau ** pl.col("delta")).alias("weight")
+        )
+        .group_by(["uid", "item_id"]).agg(pl.sum("weight").alias("conf"))
+        .with_columns(
+            pl.when(pl.col("conf") < 1e-9).then(0).otherwise(pl.col("conf")).alias("conf")
+        )
+    )
+
+    return train_df
+    
+
+class ItemKNN:
+    def __init__(self):
+        self.N = 2000
+        
+    def fit(self, lf):
+        # 0, 0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1.0, 2
+        hour = 2
+        decay = 0.9
+        tau = 0.0 if hour == 0 else decay ** (1 / 24 / 60 / 60 / (hour / 24))
+        
+        self.user_map, self.item_map = build_id_maps(lf)
+        self.reverse_item_map = {v: k for k, v in self.item_map.items()}
+        
+        lf = map_with_id_maps(lf, self.user_map, self.item_map)
+        
+        lf_tau = add_exponential_decay(lf, tau) 
+        lf_simple = add_exponential_decay(lf, 1)
+
+        self.matrix = create_user_item_matrix(lf_simple)
+        self.matrix = self.matrix.tocsr().astype(np.double) 
+
+        self.matrix_tau = create_user_item_matrix(lf_tau)
+        self.matrix_tau = self.matrix_tau.tocsr().astype(np.double) 
+
+
+        self.user_embeddings = self.matrix_tau @ self.matrix.T
+        
+        inplace_csr_row_normalize_l2(self.user_embeddings)
+        inplace_csr_row_normalize_l2(self.matrix)
+        
+    def recommend(self, uid):
+        uid = int(uid) 
+        uid = self.user_map.get(uid, None)
+        if uid is None:
+            return [], []
+            
+        vec = self.user_embeddings[uid]
+        if vec.nnz == 0:      
+            return [], []
+
+        scores = (self.matrix.T @ vec.T).toarray().ravel()
+        
+        idx = np.argsort(-scores) 
+        top_k = min(self.N, len(idx)) 
+        idx_top = idx[:top_k] 
+        scores_top = scores[idx_top] 
+        item_ids = [self.reverse_item_map[i] for i in idx_top] 
+        
+        return item_ids, scores_top
+    
+
+##################################################################
+        
+class FavoritesRecommender:
     def __init__(self):
         pass
 
@@ -177,7 +426,7 @@ class UnheardFavoritesRecommender:
         
         # 4. Оставляем лайки только по этим артистам ГЛОБАЛЬНО для артистою ЮЗЕРА
 
-        likes_top = self.likes[self.likes["artist_id"].isin(top_artists["artist_id"])]
+        likes_top = user_likes[user_likes["artist_id"].isin(top_artists["artist_id"])]
         
         # 5. Считаем лайки по (artist_id, item_id) — популярность треков у артиста
         track_counts = (
@@ -216,137 +465,12 @@ class UnheardFavoritesRecommender:
         # print(top_tracks_per_artist)
         
 
-        top_tracks_per_artist = top_tracks_per_artist[~top_tracks_per_artist["item_id"].isin(user_item)]
-
-
         top_tracks_per_artist = top_tracks_per_artist.sort_values("track_likes", ascending = False)
 
         return top_tracks_per_artist["item_id"].tolist(), top_tracks_per_artist["artist_rank"].tolist()
 
     def recommend(self, uid):
         rec, weights = self.ger_rec(uid) 
-        return rec, weights
-
-
-
-class NewItemsLastNDays:
-    def __init__(self, days: int = 5, time_col: str = "timestamp"):
-        """
-        days     — за сколько последних дней считать новинки
-        time_col — название колонки с временем (у тебя 'timestamp')
-        """
-        self.days = days
-        self.time_col = time_col
-        self.rec = []
-        self.weights = []
-
-    def fit(self, df: pd.DataFrame):
-        self.history = df.copy()
-
-        max_ts = df[self.time_col].max()
-
-        HOUR_SECONDS = 60 * 60
-        DAY_SECONDS = 24 * HOUR_SECONDS
-
-        cutoff = max_ts - DAY_SECONDS * self.days
-
-        history = df[df["timestamp"]<cutoff]["item_id"].unique().tolist()
-        current = df[df["timestamp"]>=cutoff]["item_id"].unique().tolist()
-
-        new = list(set(current) - set(history))
-        
-        new_items = df[df["item_id"].isin(new)]
-
-        self.rec = new_items["item_id"].value_counts().index.tolist()
-        
-        self.weights = new_items["item_id"].value_counts().tolist()
-
-    def recommend(self, uid):
-        return self.rec, self.weights
-
-
-
-class FavoriteArtistsNewReleases:
-    def __init__(self):
-        pass
-
-    def fit(self, df_merged):
-        self.days = 30
-        
-        # находим глобальное "сейчас" по данным — максимальный timestamp в логе
-        max_ts = df_merged["timestamp"].max()
-
-        HOUR_SECONDS = 60 * 60
-        DAY_SECONDS = 24 * HOUR_SECONDS
-
-        # порог: новинки — которые ВПЕРВЫЕ появились после этого времени
-        cutoff = max_ts - DAY_SECONDS * self.days
-
-        history = df_merged[df_merged["timestamp"]<cutoff]["item_id"].unique().tolist()
-        current = df_merged[df_merged["timestamp"]>=cutoff]["item_id"].unique().tolist()
-
-        new = list(set(current) - set(history))
-        
-        self.new_items = df_merged[df_merged["item_id"].isin(new)]
-        
-        
-        likes = df_merged[df_merged["event_type"] == "like"].copy()
-
-        listen = (
-                df_merged[df_merged["event_type"] == "listen"]
-                .groupby(['uid', 'item_id'])
-                .agg({
-                    'timestamp': 'count',
-                    'artist_id': 'first',
-                    'album_id': 'first',
-                    
-                })
-                .reset_index()
-            )
-        
-        listen = listen[listen["timestamp"]>3]
-
-        likes = pd.concat([likes, listen])
-
-        self.likes = likes
-
-        
-    def ger_rec(self, uid, flag= False):
-        N_ARTISTS = 100   # сколько самых популярных артистов
-        N_TRACKS = 100    # сколько треков на каждого артиста
-
-        user_likes =  self.likes[self.likes["uid"] == uid]
-        user_item = list(user_likes["item_id"].unique())
-    
-        # 2. Считаем, сколько лайков у каждого артиста
-        artist_like_counts = (
-            user_likes.groupby("artist_id")["item_id"]
-            .count()
-            .sort_values(ascending=False)
-            .reset_index(name="artist_likes")
-        )
-        
-        # 3. Берём топ-10 артистов
-        top_artists = artist_like_counts.head(N_ARTISTS).copy()
-        top_artists["artist_rank"] = range(1, len(top_artists) + 1)
-
-        favorite_new = self.new_items[self.new_items["artist_id"].isin(top_artists["artist_id"])]
-
-        favorite_new = favorite_new.copy()
-        order = top_artists["artist_id"].tolist()
-
-        favorite_new["artist_id"] = pd.Categorical(favorite_new["artist_id"], categories=order, ordered=True)
-
-
-        
-        favorite_new = favorite_new.sort_values("artist_id")
-
-        return favorite_new["item_id"].value_counts().index.tolist(), favorite_new["item_id"].value_counts().tolist()
- 
-
-    def recommend(self, uid, k = 10):
-        rec, weights = self.ger_rec(uid) 
-        
         return rec, weights
 
         

@@ -1,50 +1,32 @@
 import polars as pl
 
-def codic_of_index(train_lf: pl.LazyFrame, test_lf: pl.LazyFrame):
-    # Маппинг пользователей
-    user_map_lf = (
-        train_lf
-        .select(pl.col("uid"))
-        .unique()
-        .with_row_count("uid_index")   # даём индексам имена-колонки
-    )
 
-    # Маппинг айтемов
-    item_map_lf = (
-        train_lf
-        .select(pl.col("item_id"))
-        .unique()
-        .with_row_count("item_index")
-    )
+def map_with_id_maps(df_lf: pl.LazyFrame, user_map: dict, item_map: dict):
+    """
+    Принимает LazyFrame + словари маппинга, возвращает LazyFrame
+    с заменёнными uid/item_id.
+    """
+    # превращаем dict → LazyFrame для join (самый быстрый способ)
+    user_map_lf = pl.DataFrame({
+        "uid": list(user_map.keys()),
+        "uid_index": list(user_map.values())
+    }).lazy()
 
-    # Кодируем train: join по uid и item_id, затем заменяем исходные id на индексы
-    train_encoded_lf = (
-        train_lf
+    item_map_lf = pl.DataFrame({
+        "item_id": list(item_map.keys()),
+        "item_index": list(item_map.values())
+    }).lazy()
+
+    # маппинг
+    encoded_lf = (
+        df_lf
         .join(user_map_lf, on="uid", how="left")
         .join(item_map_lf, on="item_id", how="left")
         .drop(["uid", "item_id"])
         .rename({"uid_index": "uid", "item_index": "item_id"})
     )
 
-    # То же самое для test (uid/item_id которых нет в train → будут null)
-    test_encoded_lf = (
-        test_lf
-        .join(user_map_lf, on="uid", how="left")
-        .join(item_map_lf, on="item_id", how="left")
-        .drop(["uid", "item_id"])
-        .rename({"uid_index": "uid", "item_index": "item_id"})
-    )
-
-    # Для item_id_map нам нужен уже материализованный DataFrame
-    item_map_df = item_map_lf.collect()
-    item_id_map = dict(
-        zip(
-            item_map_df["item_id"].to_list(),
-            item_map_df["item_index"].to_list(),
-        )
-    )
-
-    return train_encoded_lf, test_encoded_lf, item_id_map
+    return encoded_lf
 
 
 
@@ -67,15 +49,17 @@ def train_test_split(data: pl.LazyFrame, test_size: int, gap_size: int = 30):
     train_df = (
         joined
         .filter(pl.col("timestamp") < pl.col("train_ts"))
-        .select(data.columns)
+        .select(data.collect_schema().names())
     )
 
     test_df = (
         joined
         .filter(pl.col("timestamp") > pl.col("test_ts"))
-        .select(data.columns)
+        .select(data.collect_schema().names())
     )
 
     return train_df, test_df
     
+
+
     

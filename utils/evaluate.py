@@ -1,58 +1,48 @@
 from tqdm import tqdm
 from utils.metrics import ndcg_at_k, recall_at_k
 import numpy as np
+import polars as pl
 
-
-def get_user_listened_items(history, uid):
-    return history[history["uid"] == uid]["item_id"].unique().tolist()
-
-
-def filtering_listened_items(train_df, uid, rec, weights, k=None):
-
-    user_listened_items = set(get_user_listened_items(train_df, uid))
-    
+def filtering_listened_items(rec, weights, listened_items: set, k=None):
     filtered_rec = []
     filtered_weights = []
 
-
     for item, weight in zip(rec, weights):
-        if item in user_listened_items:
+        if item in listened_items:
             continue
         filtered_rec.append(item)
         filtered_weights.append(weight)
-        
+        if k is not None and len(filtered_rec) >= k:
+            break
 
     return filtered_rec, filtered_weights
-
     
-def evaluate_model(model, train_df, test_df, k=10):
-    test_df = test_df[test_df["event_type"]!="dislike"]
-    grouped_users = test_df.groupby("uid")
+
+def evaluate_model(model, user_history, test_lf: pl.LazyFrame, k: int = 10):
+
     overall_recall = []
     overall_ndcg = []
-    for uid, group in tqdm(grouped_users):
-        # print(list(group["item_id"]))
-        user_true = list(set(group["item_id"]))
+    test_lf = test_lf.collect()
+    for i in tqdm(range(len(test_lf))): 
+        uid = test_lf[i, "uid"] 
+        user_true = set(test_lf[i, "items"] )
 
-        # print("-------------------")
+        if not user_true:
+            continue
+
         rec, weights = model.recommend(uid)
-        rec, weights = filtering_listened_items(train_df, uid, rec, weights)
-    
-        # print(rec)
-        user_listened_items = set(get_user_listened_items(train_df, uid))
-        perfect = list(set(user_true)-set(user_listened_items))
 
-        if len(perfect) == 0:
-            continue   # skip user
+        # listened_items = user_history.get(uid, set())
+        # rec, weights = filtering_listened_items(rec, weights, listened_items, k=k)
 
-        recall = recall_at_k(rec, perfect,  10)
-        ndcg = ndcg_at_k(rec ,perfect,  10)
+        if not rec:
+            continue
 
-        # print(uid, ndcg, len(rec))
+        recall = recall_at_k(rec, user_true, k)
+        ndcg = ndcg_at_k(rec, user_true, k)
 
-        
         overall_recall.append(recall)
         overall_ndcg.append(ndcg)
-    
-    print("Mean Recall@10:", np.mean(overall_recall))
-    print("Mean NDCG@10:",np.mean(overall_ndcg))
+
+    print("Mean Recall@{}:".format(k), np.mean(overall_recall))
+    print("Mean NDCG@{}:".format(k), np.mean(overall_ndcg))
