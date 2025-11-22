@@ -190,33 +190,6 @@ flowchart LR
     class RANK ranking;
 ```
 
-```mermaid
-C4Context
-    title Recommendation Pipeline Architecture
-
-    System(Retrieval, "Retrieval System", "Generates candidate items for recommendation")
-    System(Sorting, "Sorting System", "Filters out already viewed items")
-    System(Ranking, "Ranking System", "Ranks candidates using CatBoost model")
-
-    Container(PopAll, "PopAll", "Trending items from last 5 days")
-    Container(PopUser, "PopUser", "User's top listened tracks over past 20 days")
-    Container(SIM, "SIM", "Content-based Filtering using embeddings")
-    Container(ALS, "ALS", "Collaborative Filtering with ALS")
-
-    Container(FILTER, "FILTER", "Filter already viewed items")
-
-    Container(RANK, "RANK", "CatBoost ranking model")
-
-    Rel(PopAll, FILTER, "Feeds candidates")
-    Rel(PopUser, FILTER, "Feeds candidates")
-    Rel(SIM, FILTER, "Feeds candidates")
-    Rel(ALS, FILTER, "Feeds candidates")
-
-    Rel(FILTER, RANK, "Passes filtered candidates for ranking")
-```
-
-
-
 
 ## Эксперименты 
 
