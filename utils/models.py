@@ -374,106 +374,37 @@ class ItemKNN:
         return item_ids, scores_top
     
 
-##################################################################
         
-class FavoritesRecommender:
+class LastListenRecommender:
     def __init__(self):
-        pass
+        self.user_fav_songs = None
 
-    def fit(self, df_merged):
+    def fit(self, df_merged: pl.DataFrame | pl.LazyFrame):
+        self.user_fav_songs = df_merged.collect()
+        
+    def recommend(self, uid: int):
+        if self.user_fav_songs is None:
+            raise RuntimeError("Call fit() before recommend().")
 
-        likes = df_merged[df_merged["event_type"] == "like"].copy()
-
-        listen = (
-                df_merged[df_merged["event_type"] == "listen"]
-                .groupby(['uid', 'item_id'])
-                .agg({
-                    'timestamp': 'count',
-                    'artist_id': 'first',
-                    'album_id': 'first',
-                    
-                })
-                .reset_index()
+        df = (
+            self.user_fav_songs
+            .filter(pl.col("uid") == uid)
+            .sort(
+                by=["conf"],
+                descending=[True],
             )
-        
-        listen = listen[listen["timestamp"]>5]
-
-        self.only_likes = likes
-        
-        likes = pd.concat([likes, listen])
-
-        self.likes = likes
-
-        
-    def ger_rec(self, uid):
-        N_ARTISTS = 100   # сколько самых популярных артистов
-        N_TRACKS = 100    # сколько треков на каждого артиста
-
-        user_likes =  self.likes[self.likes["uid"] == uid]
-        user_item = list(user_likes["item_id"].unique())
-    
-        # 2. Считаем, сколько лайков у каждого артиста
-        artist_like_counts = (
-            user_likes.groupby("artist_id")["item_id"]
-            .count()
-            .sort_values(ascending=False)
-            .reset_index(name="artist_likes")
         )
-        
-        # 3. Берём топ-10 артистов
-        top_artists = artist_like_counts.head(N_ARTISTS).copy()
-        top_artists["artist_rank"] = range(1, len(top_artists) + 1)
-        
-        # 4. Оставляем лайки только по этим артистам ГЛОБАЛЬНО для артистою ЮЗЕРА
 
-        likes_top = user_likes[user_likes["artist_id"].isin(top_artists["artist_id"])]
-        
-        # 5. Считаем лайки по (artist_id, item_id) — популярность треков у артиста
-        track_counts = (
-            likes_top.groupby(["artist_id", "item_id"])
-            .size()
-            .reset_index(name="track_likes")
-        )
-        
-        # 6. Подтягиваем к трекам общие лайки артиста и его ранг
-        track_counts = track_counts.merge(top_artists, on="artist_id", how="left")
-        
-        # 7. Сортируем: сначала по популярности артиста, потом по популярности трека
-        track_counts = track_counts.sort_values(
-            ["artist_rank", "track_likes"],
-            ascending=[True, False]
-        )
-        
-        # 8. Берём топ N_TRACKS треков для каждого артиста и добавляем ранг трека
-        top_tracks_per_artist = (
-            track_counts
-            .groupby("artist_id")
-            .head(N_TRACKS)
-            .copy()
-        )
-        
-        top_tracks_per_artist["track_rank"] = (
-            top_tracks_per_artist.groupby("artist_id")["track_likes"]
-            .rank(method="first", ascending=False)
-            .astype(int)
-        )
-        
-        # 9. Финальная сортировка для красивого вывода
-        top_tracks_per_artist = top_tracks_per_artist.sort_values(
-            ["artist_rank", "track_rank"]
-        ).reset_index(drop=True)
-        # print(top_tracks_per_artist)
-        
+        rec = df.get_column("item_id").to_list()
+        weights = df.get_column("conf").to_list()  
 
-        top_tracks_per_artist = top_tracks_per_artist.sort_values("track_likes", ascending = False)
-
-        return top_tracks_per_artist["item_id"].tolist(), top_tracks_per_artist["artist_rank"].tolist()
-
-    def recommend(self, uid):
-        rec, weights = self.ger_rec(uid) 
         return rec, weights
 
-        
+
+
+##################################################################
+
+
 class CBF_by_metadata:
     def __init__(self):
         pass
