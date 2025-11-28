@@ -11,13 +11,13 @@
 
 	// 
 	"runArgs": [
-		"--shm-size=8g",          // shared memory (важно для ноутбуков / multiprocessing)
-		"--memory=16g",           // лимит RAM контейнера
-		"--memory-swap=24g",      // RAM + swap (можно больше RAM)
-		"--cpus=6",               // лимит CPU ядер
-		"--ulimit", "memlock=-1", // не блокируем memlock
-		"--ulimit", "stack=67108864" // 64MB stack
-		// опционально: "--ipc=host" если активный multiprocessing
+		"--shm-size=8g",
+		"--memory=16g",
+		"--memory-swap=24g",
+		"--cpus=6",
+		"--ulimit", "memlock=-1",
+		"--ulimit", "stack=67108864",
+		"--gpus", "all"
 	]
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
