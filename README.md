@@ -146,8 +146,8 @@ flowchart TB
 
     %% === Cleaning блок ===
     subgraph CLEANING["Cleaning Pipeline"]
-        direction LR
-
+        direction TB
+        
         %% === Train Cleaning ===
         subgraph TRAIN_CLN["Train Cleaning"]
             direction TB
