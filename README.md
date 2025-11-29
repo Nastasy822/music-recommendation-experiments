@@ -151,11 +151,8 @@ flowchart LR
         %% === Train Cleaning ===
         subgraph TRAIN_CLN["Train Cleaning"]
             direction TB
-            N1["Удаление дубликатов"]
-            N2["Удаление редких песен и пользователей"]
-            N3["Удаление коротких/длинных треков"]
-            N4["Обработка последовательностей like/dislike"]
-            N1 --> N2 --> N3 --> N4
+            N1["Удаление дубликатов/nУдаление редких песен и пользователей/Удаление коротких/длинных треков/nОбработка последовательностей like/dislike"]
+
         end
 
         %% === Test Cleaning ===
@@ -173,7 +170,7 @@ flowchart LR
     SPLIT -->|train| N1
     SPLIT -->|test| T1
 
-    N4 --> PRE_TRAIN
+    N1 --> PRE_TRAIN
     T1 --> PRE_TEST
 
     %% === Стили ===
