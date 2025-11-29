@@ -146,19 +146,21 @@ flowchart LR
 
     %% === Cleaning блок ===
     subgraph CLEANING["Cleaning Pipeline"]
-        direction TB
+        direction LR
 
+        %% === Train Cleaning ===
         subgraph TRAIN_CLN["Train Cleaning"]
+            direction TB
             N1["Удаление дубликатов"]
             N2["Удаление редких песен и пользователей"]
             N3["Удаление коротких/длинных треков"]
             N4["Обработка последовательностей like/dislike"]
-            N1 --> N2
-            N2 --> N3
-            N3 --> N4
+            N1 --> N2 --> N3 --> N4
         end
 
+        %% === Test Cleaning ===
         subgraph TEST_CLN["Test Cleaning"]
+            direction TB
             T1["Обработка последовательностей like/dislike"]
         end
     end
