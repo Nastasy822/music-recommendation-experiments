@@ -144,17 +144,22 @@ flowchart LR
     %% === Train/Test Split ===
     SPLIT["Train/Test Split"]
 
-    %% === Cleaning блок (один розовый блок) ===
+    %% === Cleaning блок ===
     subgraph CLEANING["Cleaning Pipeline"]
         direction TB
 
-        N1["1. Удаление дубликатов<br/>
-            2. Удаление редких песен и пользователей<br/>
-            3. Удаление коротких/длинных треков<br/>
-            4. Обработка последовательностей like/dislike"]
+        %% === Train Cleaning ===
+        subgraph TRAIN_CLN["Train Cleaning"]
+            direction TB
+            N1["1. Удаление дубликатов<br/>2. Удаление редких песен и пользователей<br/>3. Удаление коротких/длинных треков<br/>4. Обработка последовательностей like/dislike"]
 
-        T1["Обработка последовательностей like/dislike (Test)"]
+        end
 
+        %% === Test Cleaning ===
+        subgraph TEST_CLN["Test Cleaning"]
+            direction TB
+            T1["Обработка последовательностей like/dislike"]
+        end
     end
 
     PRE_TRAIN["Preprocessed Train Data"]
@@ -176,7 +181,7 @@ flowchart LR
 
     class SRC source;
     class SPLIT split;
-    class CLEANING clean;
+    class TRAIN_CLN,TEST_CLN clean;
     class PRE_TRAIN,PRE_TEST result;
 
 ```
