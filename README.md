@@ -132,7 +132,54 @@ pd.DataFrame(
 
 После загрузки файлы были открыты и обработаны стандартными средствами `pandas` и `pyarrow`.
 
+```mermaid
+flowchart LR
 
+    %% === Исходные данные ===
+    SRC["Source Data"]
+
+    %% === Train/Test Split ===
+    SPLIT["Train/Test Split"]
+
+    %% === Cleaning блок ===
+    subgraph CLEANING["Cleaning Pipeline"]
+        direction TB
+
+        subgraph TRAIN_CLN["Train Cleaning"]
+            N1["Step N1"]
+            N2["Step N2"]
+            N1 --> N2
+        end
+
+        subgraph TEST_CLN["Test Cleaning"]
+            T1["Step T1"]
+            T2["Step T2"]
+            T1 --> T2
+        end
+    end
+
+    PRE_TRAIN["Preprocessed Train Data"]
+    PRE_TEST["Preprocessed Test Data"]
+
+    %% === Потоки ===
+    SRC --> SPLIT
+    SPLIT -->|train| N1
+    SPLIT -->|test| T1
+
+    N2 --> PRE_TRAIN
+    T2 --> PRE_TEST
+
+    %% === Стили ===
+    classDef source fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
+    classDef split fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
+    classDef clean fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+    classDef result fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
+
+    class SRC source;
+    class SPLIT split;
+    class TRAIN_CLN,TEST_CLN clean;
+    class PRE_TRAIN,PRE_TEST result;
+```
 --------------------------------------------------------------------------------------------------
 ### Когда считаем, что песня понравилась пользователю  
 
@@ -225,15 +272,16 @@ flowchart LR
 - добавить статус skip
 - проверить retry прослушивания 
 - обработать timestamp 
-- использовать информацию о альбомах
+- ~~использовать информацию о альбомах~~
 - Выстроить полноценный пайплан
-- новинки
+- ~~новинки~~
 - топ из похожих что уже слушали (топ артистов любимых)
 - время суток, сезонность
 - SASRec
-- Использовать все эмбединги юзеров 
-- увеличить количество данных, с которыми работаю
+- ~~Использовать все эмбединги юзеров~~
+- ~~увеличить количество данных, с которыми работаю~~
 - Exploration Ratio добавить как фичу и глобальную метрику
+- использовать GNN
 
 
 ## ToDo

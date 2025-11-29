@@ -1,13 +1,21 @@
 stages:
   data_preprocessing:
-    cmd: python stages/data_preprocessing.py 
+    cmd: python dvc_stages_runner.py --stage data_preprocessing
     deps:
       - stages/data_preprocessing.py
+      - data/source/filtered_embeddings.parquet 
+      - data/source/items_meta.parquet    
+      - data/source/multi_event.parquet    
+
     params:
       - base
-      - form_time_series
     outs:
-      - data/train_time_series_dataset.parquet
-      - data/test_time_series_dataset.parquet
-      - data/train_samples_labels.parquet
-      - data/test_samples_labels.parquet
+      - data/item_map.json
+      - data/user_map.json
+      - data/train_df_preprocessed.parquet
+      - data/test_df_preprocessed_for_eval.parquet
+
+
+
+
+
