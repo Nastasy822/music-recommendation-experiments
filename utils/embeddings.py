@@ -1,4 +1,4 @@
-rom utils.data_cleaning import *
+from utils.data_cleaning import *
 from utils.data_preprocess import *
 from utils.evaluate import evaluate_model
 from utils.cf_utils import *
@@ -76,20 +76,12 @@ def create_index(filename, item_id_map):
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
 import numpy as np
-from sklearn.cluster import DBSCAN
 
 import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import polars as pl
 import numpy as np
-import umap
-import hdbscan
-import polars as pl
-
-import numpy as np
-from umap.umap_ import UMAP
 
 
 def build_users_history_normal(train_df: pl.LazyFrame | pl.DataFrame):
@@ -137,7 +129,7 @@ def build_users_history_normal(train_df: pl.LazyFrame | pl.DataFrame):
 def build_users_history_big(train_df: pl.LazyFrame | pl.DataFrame):
     train_df = (
         train_df
-        .filter(pl.col("is_organic") == 1)
+        # .filter(pl.col("is_organic") == 1)
         .select(["uid", "item_id"])
         .unique()
         .group_by("uid")
@@ -246,15 +238,28 @@ def spherical_mean_shift(
 
     return labels, centers, modes
 
+
+
+import json
+from utils.embeddings import *
+
+
 class CBF_by_embeding_kmean:
     def __init__(self):
         self.k = 10
         # kmeans = KMeans( n_clusters=self.k, random_state=42, n_init=10)
             
-    def fit(self, data, index, item_ids):
-        self.data = data
+    def fit(self, data):
+        
+        with open("data/item_map.json", "r", encoding="utf-8") as f:
+            item_map = json.load(f)
+        
+        item_map = {int(k): v for k, v in item_map.items()}
 
-        self.index, self.item_ids = index, item_ids
+        self.index, self.item_ids = create_index("data/filtered_embeddings.parquet", item_map)
+
+        self.data = data
+        
         self.id2pos = {iid: i for i, iid in enumerate(self.item_ids)} 
 
         self.total = []

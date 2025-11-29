@@ -12,6 +12,7 @@ from utils.data_preprocess import *
 from implicit.nearest_neighbours import ItemItemRecommender
 from implicit.nearest_neighbours import bm25_weight  # или tfidf_weight
 from implicit.nearest_neighbours import CosineRecommender
+from utils.cf_utils import * 
 
 import numpy as np
 import scipy.sparse as sp
@@ -165,7 +166,11 @@ class ALS:
                                 calculate_training_loss = True) 
         self.N = 2000
         
-    def fit(self, lf):
+    def fit(self, train_df):
+
+        train_df = merge_data_by_count(train_df)
+        lf = calculate_conf(train_df)
+
         self.user_map, self.item_map = build_id_maps(lf)
         self.reverse_item_map = {v: k for k, v in self.item_map.items()}
         
@@ -211,7 +216,10 @@ class BM25Rec:
         self.model = BM25Recommender(K=200, K1=0.1, B=0.75, num_threads=0)
         self.N = 2000
         
-    def fit(self, lf):
+    def fit(self, train_df):
+
+        train_df = merge_data_by_count(train_df)
+        lf = calculate_conf(train_df)
         
         self.user_map, self.item_map = build_id_maps(lf)
         self.reverse_item_map = {v: k for k, v in self.item_map.items()}
@@ -263,7 +271,11 @@ class BPR:
 
         self.N = 2000
         
-    def fit(self, lf):
+    def fit(self, train_df):
+
+        train_df = merge_data_by_count(train_df)
+        lf = calculate_conf(train_df)
+        
         self.user_map, self.item_map = build_id_maps(lf)
         self.reverse_item_map = {v: k for k, v in self.item_map.items()}
         
@@ -379,8 +391,15 @@ class LastListenRecommender:
     def __init__(self):
         self.user_fav_songs = None
 
-    def fit(self, df_merged: pl.DataFrame | pl.LazyFrame):
-        self.user_fav_songs = df_merged.collect()
+    def fit(self, train_df: pl.DataFrame | pl.LazyFrame):
+
+        hour = 24
+        decay = 0.9
+        tau = 0.0 if hour == 0 else decay ** (1 / 24 / 60 / 60 / (hour / 24))
+        
+        df_tau = add_exponential_decay(train_df, tau)
+
+        self.user_fav_songs = df_tau.collect()
         
     def recommend(self, uid: int):
         if self.user_fav_songs is None:
@@ -410,7 +429,16 @@ class RandomWalkWithRestart:
     def __init__(self):
         pass
 
-    def fit(self, lf_user_track):
+    def fit(self, train_df, items_meta):
+
+
+        df_merged = merge_data_by_count(train_df)
+        lf_user_track = df_merged.join(
+                items_meta.select(["item_id", "artist_id", "album_id"]),
+                on="item_id",
+                how="left",
+            )
+
         
         df = lf_user_track.filter(pl.col("played_ratio_max")>=50)
         df = df.filter(pl.col("listen_count")>5).collect()  
