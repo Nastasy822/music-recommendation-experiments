@@ -136,7 +136,7 @@ pd.DataFrame(
 ### 📥 Data Preprocessing
 
 ```mermaid
-flowchart LR
+flowchart TB
 
     %% === Исходные данные ===
     SRC["Source Data"]
