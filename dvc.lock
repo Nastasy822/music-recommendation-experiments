@@ -1,0 +1,15 @@
+schema: '2.0'
+stages:
+  data_preprocessing:
+    cmd: python dvc_stages_runner.py --stage data_preprocessing
+    deps:
+    - path: stages/data_preprocessing.py
+      hash: md5
+      md5: f081bff22332791a3a51de84782414a1
+      size: 401
+    params:
+      params.yaml:
+        base:
+          samplings:
+          - train
+          - test
