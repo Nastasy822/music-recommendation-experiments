@@ -10,7 +10,6 @@ import numpy as np
 
 
 
-
 class HybridModel:
     def __init__(self):
       
