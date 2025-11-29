@@ -1,0 +1,4 @@
+base:
+  samplings:
+    - train
+    - test
