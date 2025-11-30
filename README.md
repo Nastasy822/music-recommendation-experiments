@@ -243,12 +243,16 @@ flowchart LR
         PopUser["Топ прослушанных за последние 20 дней"]
         SIM["Songs embeddings"]
         ITEMKNN["ItemKNN"]
-        GRAPH["Graph-based "]
+        GRAPH["Graph-based"]
         ALS["ALS"]
     end
 
     subgraph SORTING ["Sorting"]
         FILTER["Фильтрация уже просмотренных"]
+    end
+
+    subgraph FEATURES ["Feature Extraction"]
+        FEATS["Feature Extraction"]
     end
 
     subgraph RANKING ["Ranking"]
@@ -263,15 +267,18 @@ flowchart LR
     ITEMKNN --> FILTER
     GRAPH --> FILTER
 
-    FILTER --> RANK
+    FILTER --> FEATS
+    FEATS --> RANK
 
-    %% === Цветовые стили (Пастельные узлы, фон subgraph по умолчанию — белый) ===
+    %% === Цветовые стили ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
+    classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
     classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
 
-    class PopAll,PopUser,SIM,ALS retrieval;
+    class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
+    class FEATS features;
     class RANK ranking;
 ```
 
