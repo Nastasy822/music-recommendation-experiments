@@ -239,12 +239,25 @@ flowchart LR
 
     %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval"]
-        PopAll["Тренды последних 5 дней"]
-        PopUser["Топ прослушанных за последние 20 дней"]
-        SIM["Songs embeddings"]
-        ITEMKNN["ItemKNN"]
-        GRAPH["Graph-based"]
-        ALS["ALS"]
+        direction LR
+
+        subgraph Row1
+            direction TB
+            PopAll["Тренды последних 5 дней"]
+            PopUser["Топ прослушанных за последние 20 дней"]
+        end
+
+        subgraph Row2
+            direction TB
+            SIM["Songs embeddings"]
+            ITEMKNN["ItemKNN"]
+        end
+
+        subgraph Row3
+            direction TB
+            GRAPH["Graph-based"]
+            ALS["ALS"]
+        end
     end
 
     subgraph SORTING ["Sorting"]
@@ -260,7 +273,6 @@ flowchart LR
 
     %% === Потоки данных ===
     RETRIEVAL --> FILTER
-
     FILTER --> RANK
     FEATS --> RANK
 
@@ -274,6 +286,7 @@ flowchart LR
     class FILTER sorting;
     class RANK ranking;
     class FEATS features;
+
 ```
 
 
