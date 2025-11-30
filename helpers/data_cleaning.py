@@ -6,8 +6,8 @@ def remove_duplicates_by_timestamps(df_lf: pl.LazyFrame):
     keys = ["timestamp", "uid", "event_type"]
     return df_lf.unique(
         subset=keys,
-        keep="none",        # убрать ВСЕ дубликаты этих ключей
-        maintain_order=False  # по умолчанию False, так можно использовать стриминг
+        keep="none",        
+        maintain_order=False  
     )
 
 

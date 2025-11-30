@@ -1,31 +1,33 @@
-import logging
-
-import numpy as np
 import polars as pl
-from utils.models import *
-from utils.embeddings import *
-
-from stages.base_stage import BaseStage
-from utils.evaluate import evaluate_model
-
-from utils.maps_creater import build_users_history
+import logging
 import json
 
 from box import ConfigBox
 from ruamel.yaml import YAML
 
+from models.most_popular import MostPopular
+from models.new_items import NewItemsLastNDays
+from models.last_listen_recommender import LastListenRecommender
+from models.implicit_models_wrapers import ALS, BM25, BPR
+from models.item_knn import ItemKNN
+from models.random_walk_with_restart import RandomWalkWithRestart
+from models.kmeans_embedding import KMeansEmbedding
+
+
+from stages.base_stage import BaseStage
+from helpers.evaluate import evaluate_model
+
 
 models_config = {
-    "MostPop_by_likes":         MostPop_by_likes,
-    "MostPop_by_listen":        MostPop_by_listen,
+    "MostPopular":              MostPopular,
     "NewItemsLastNDays":        NewItemsLastNDays,
     "LastListenRecommender":    LastListenRecommender,
     "ALS":                      ALS,
-    "BM25Rec":                  BM25Rec,
+    "BM25":                     BM25,
     "ItemKNN":                  ItemKNN,
     "BPR":                      BPR,
     "RandomWalkWithRestart":    RandomWalkWithRestart,
-    "CBF_by_embeding_kmean":    CBF_by_embeding_kmean,
+    "KMeansEmbedding":          KMeansEmbedding,
 }
 
 
@@ -36,8 +38,7 @@ class RetrievalModels(BaseStage):
         yaml = YAML(typ='safe')
         params = ConfigBox(yaml.load(open("params.yaml", encoding='utf-8')))
         self.models = params.retrivals.models
-
-
+  
     def run(self):
         
         train_df = pl.scan_parquet("data/train_df_preprocessed.parquet")
