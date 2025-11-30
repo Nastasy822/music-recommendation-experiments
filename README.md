@@ -237,15 +237,17 @@ pd.DataFrame(
 ```mermaid
 flowchart LR
 
-    subgraph RETRIEVAL ["Retrieval"]
+    subgraph RETRIEVAL["Retrieval"]
         direction LR
-        subgraph C1[""]
+
+        subgraph C1
             direction TB
             PopAll["Тренды последних 5 дней"]
             PopUser["Топ прослушанных за последние 20 дней"]
             SIM["Songs embeddings"]
         end
-        subgraph C2[""]
+
+        subgraph C2
             direction TB
             ITEMKNN["ItemKNN"]
             GRAPH["Graph-based"]
@@ -253,11 +255,11 @@ flowchart LR
         end
     end
 
-    subgraph SORTING ["Sorting"]
+    subgraph SORTING["Sorting"]
         FILTER["Фильтрация уже просмотренных"]
     end
 
-    subgraph RANKING ["Ranking"]
+    subgraph RANKING["Ranking"]
         RANK["CatBoost"]
     end
 
