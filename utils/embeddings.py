@@ -256,7 +256,7 @@ class CBF_by_embeding_kmean:
         
         item_map = {int(k): v for k, v in item_map.items()}
 
-        self.index, self.item_ids = create_index("data/filtered_embeddings.parquet", item_map)
+        self.index, self.item_ids = create_index("data/source/filtered_embeddings.parquet", item_map)
 
         self.data = data
         
