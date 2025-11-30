@@ -239,25 +239,12 @@ flowchart LR
 
     %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval"]
-        direction LR
-
-        subgraph Row1
-            direction TB
-            PopAll["Тренды последних 5 дней"]
-            PopUser["Топ прослушанных за последние 20 дней"]
-        end
-
-        subgraph Row2
-            direction TB
-            SIM["Songs embeddings"]
-            ITEMKNN["ItemKNN"]
-        end
-
-        subgraph Row3
-            direction TB
-            GRAPH["Graph-based"]
-            ALS["ALS"]
-        end
+        PopAll["Тренды последних 5 дней"]
+        PopUser["Топ прослушанных за последние 20 дней"]
+        SIM["Songs embeddings"]
+        ITEMKNN["ItemKNN"]
+        GRAPH["Graph-based"]
+        ALS["ALS"]
     end
 
     subgraph SORTING ["Sorting"]
@@ -268,29 +255,30 @@ flowchart LR
         RANK["CatBoost"]
     end
 
-    %% === Feature Extraction ===
+    %% === Отдельный нижний блок Feature Extraction ===
     FEATS["Feature Extraction"]
 
-    %% === Потоки ===
-    RETRIEVAL --> FILTER
+    %% === Потоки данных ===
+    PopAll --> FILTER
+    PopUser --> FILTER
+    SIM --> FILTER
+    ALS --> FILTER
+    ITEMKNN --> FILTER
+    GRAPH --> FILTER
+
     FILTER --> RANK
     FEATS --> RANK
 
-    %% === Стили ===
+    %% === Цветовые стили ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
-    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#1a5c1a;
+    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
     class RANK ranking;
     class FEATS features;
-
-    %% === Скрываем рамки Row1 / Row2 / Row3 ===
-    style Row1 fill:transparent,stroke-width:0
-    style Row2 fill:transparent,stroke-width:0
-    style Row3 fill:transparent,stroke-width:0
 ```
 
 
