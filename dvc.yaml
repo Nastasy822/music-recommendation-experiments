@@ -16,6 +16,19 @@ stages:
       - data/test_df_preprocessed_for_eval.parquet
 
 
+  retrieval_models_testing:
+    cmd: python dvc_stages_runner.py --stage retrieval_models_testing
+    deps:
+      - stages/retrieval_models_testing.py
+      - data/item_map.json
+      - data/user_map.json
+      - data/train_df_preprocessed.parquet
+      - data/test_df_preprocessed_for_eval.parquet 
+
+    params:
+      - base
+
+
 
 
 

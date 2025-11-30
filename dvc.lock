@@ -3,13 +3,43 @@ stages:
   data_preprocessing:
     cmd: python dvc_stages_runner.py --stage data_preprocessing
     deps:
+    - path: data/source/filtered_embeddings.parquet
+      hash: md5
+      md5: e02f5676a9bae8250db949e976bc285e
+      size: 1327571735
+    - path: data/source/items_meta.parquet
+      hash: md5
+      md5: 98c71c7502eb5785d7c2adc209ecda7b
+      size: 16034798
+    - path: data/source/multi_event.parquet
+      hash: md5
+      md5: bfe8797143bae0e824f9778131f4fe70
+      size: 384465869
+      isexec: true
     - path: stages/data_preprocessing.py
       hash: md5
-      md5: f081bff22332791a3a51de84782414a1
-      size: 401
+      md5: 3a208fe4baf715c11fd5f697632908f0
+      size: 6541
     params:
       params.yaml:
         base:
           samplings:
           - train
           - test
+    outs:
+    - path: data/item_map.json
+      hash: md5
+      md5: 405ee3eb255dd04e027eac599cac912d
+      size: 19345053
+    - path: data/test_df_preprocessed_for_eval.parquet
+      hash: md5
+      md5: 8fbfb42c03f9f420806582c9e38f21c5
+      size: 425746
+    - path: data/train_df_preprocessed.parquet
+      hash: md5
+      md5: 3c107af8bf88bc785d2936388ac40fcb
+      size: 263583513
+    - path: data/user_map.json
+      hash: md5
+      md5: 167df7b5c7f953f219831d74085c34c8
+      size: 177786
