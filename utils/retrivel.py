@@ -1,6 +1,4 @@
 from catboost import CatBoostRanker
-from utils.evaluate import filtering_listened_items
-
 
 class CandidateGenerator:
     def __init__(self):
@@ -9,7 +7,7 @@ class CandidateGenerator:
         self.als = ALS()
         self.item_knn = ItemKNN()
         self.graph = RandomWalkWithRestart()
-        self.embed = CBF_by_embeding_kmean()
+        self.embed = KMeansEmbedding()
     
         self.limit_trend = 100
         self.limit_new = 100

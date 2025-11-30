@@ -1,5 +1,4 @@
 from catboost import CatBoostRanker
-from utils.evaluate import filtering_listened_items
 
 import polars as pl
 from datetime import timedelta
@@ -7,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from catboost import CatBoostRanker, Pool
 import pandas as pd
 import numpy as np
-from utils.sorting import CadidatesFiltration
+from helpers.candidates_filtration import CandidatesFiltration
 from utils.features_extractor import *
 from tqdm import tqdm
 
@@ -117,7 +116,7 @@ class HybridModel:
     def fit(self, train_df, candidate_model, items_meta):
         self.candidate_model = candidate_model
 
-        self.filter_model = CadidatesFiltration(min_days_since_last_play = 2)
+        self.filter_model = CandidatesFiltration(min_days_since_last_play = 2)
         self.filter_model.fit(train_df)
 
         self.item_features = build_item_stats(train_df).select([

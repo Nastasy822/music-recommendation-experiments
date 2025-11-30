@@ -1,18 +1,12 @@
-from utils.data_cleaning import *
-from utils.data_preprocess import *
-from utils.evaluate import evaluate_model
-from utils.cf_utils import *
-from utils.models import *
-from utils.big_data_helper import *
-import polars as pl
 
+from helpers.big_data_helper import *
 from utils.maps_creater import *
 
-
+import polars as pl
 import faiss
 from tqdm import tqdm
-from sklearn.pipeline import Pipeline
-
+import numpy as np
+import json
 
 def create_index(filename, item_id_map):
     lf = pl.scan_parquet(filename)
@@ -70,18 +64,6 @@ def create_index(filename, item_id_map):
         print(f"added up to offset={offset}, total indexed={index.ntotal}")
 
     return index, all_item_ids
-
-
-
-from sklearn.cluster import KMeans
-from sklearn.datasets import make_blobs
-import numpy as np
-
-import numpy as np
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-import polars as pl
-import numpy as np
 
 
 def build_users_history_normal(train_df: pl.LazyFrame | pl.DataFrame):
@@ -143,6 +125,7 @@ def build_users_history_big(train_df: pl.LazyFrame | pl.DataFrame):
         for row in train_df.iter_rows(named=True)
     }
 
+
 def l2_normalize_rows(X, eps=1e-12):
     norms = np.linalg.norm(X, axis=1, keepdims=True)
     norms = np.maximum(norms, eps)
@@ -156,28 +139,7 @@ def spherical_mean_shift(
     tol=1e-4,            # критерий сходимости для одной траектории
     merge_angle_deg=5.0  # порог склейки мод в градусах
 ):
-    """
-    Spherical Mean-Shift с vMF-ядром для данных на сфере.
 
-    Параметры:
-        X : (n_samples, n_features)
-        kappa : float
-            Параметр концентрации ядра exp(kappa * cos(theta)).
-            Аналог bandwidth: больше kappa -> более мелкие, локальные кластеры.
-        max_iter : int
-        tol : float
-            Если максимальный сдвиг по точкам < tol, останавливаемся.
-        merge_angle_deg : float
-            Порог угла (в градусах), при котором две моды считаются одной.
-
-    Возвращает:
-        labels : (n_samples,)
-            Номер кластера для каждой исходной точки.
-        centers : (n_clusters, n_features)
-            Плотностные центры (моды) на сфере.
-        modes : (n_samples, n_features)
-            Итоговое положение каждой точки после mean-shift.
-    """
     # 1) Нормируем входные эмбеддинги на сферу
     X_norm = l2_normalize_rows(X)
     n_samples, n_features = X_norm.shape
@@ -240,14 +202,9 @@ def spherical_mean_shift(
 
 
 
-import json
-from utils.embeddings import *
-
-
-class CBF_by_embeding_kmean:
+class KMeansEmbedding:
     def __init__(self):
         self.k = 10
-        # kmeans = KMeans( n_clusters=self.k, random_state=42, n_init=10)
             
     def fit(self, data):
         

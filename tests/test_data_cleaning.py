@@ -1,7 +1,7 @@
 import polars as pl
 import pytest
-from utils.data_cleaning import *
-import utils.data_cleaning
+from helpers.data_cleaning import *
+import helpers.data_cleaning
 import polars as pl
 from pathlib import Path
 

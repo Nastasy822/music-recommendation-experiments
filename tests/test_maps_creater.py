@@ -1,5 +1,5 @@
 import polars as pl
-from utils.maps_creater import *
+from models.utils import build_id_maps
 from pathlib import Path
 from tqdm import tqdm
 

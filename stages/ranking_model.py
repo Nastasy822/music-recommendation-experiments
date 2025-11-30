@@ -6,8 +6,7 @@ import polars as pl
 from stages.base_stage import BaseStage
 from utils.retrivel import CandidateGenerator
 from utils.ranking import HybridModel
-from utils.evaluate import evaluate_model
-from utils.maps_creater import build_users_history
+from helpers.evaluate import evaluate_model
 
 import json
 

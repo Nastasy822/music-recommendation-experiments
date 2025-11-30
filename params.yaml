@@ -6,13 +6,12 @@ base:
 
 retrivals:
   models:
-    - MostPop_by_likes
-    - MostPop_by_listen
+    - MostPopular
     - NewItemsLastNDays
     - LastListenRecommender
     - ALS
-    - BM25Rec
+    - BM25
     - ItemKNN
     - BPR
     - RandomWalkWithRestart
-    - CBF_by_embeding_kmean
+    - KMeansEmbedding
