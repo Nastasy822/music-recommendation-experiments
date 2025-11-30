@@ -18,7 +18,7 @@ def filtering_listened_items(rec, weights, listened_items: set, k=None):
     return filtered_rec, filtered_weights
     
 
-def evaluate_model(model, user_history, test_lf: pl.LazyFrame, k: int = 10):
+def evaluate_model(model, test_lf: pl.LazyFrame, k: int = 10):
 
     overall_recall = []
     overall_ndcg = []
@@ -31,9 +31,6 @@ def evaluate_model(model, user_history, test_lf: pl.LazyFrame, k: int = 10):
             continue
 
         rec, weights = model.recommend(uid)
-
-        # listened_items = user_history.get(uid, set())
-        # rec, weights = filtering_listened_items(rec, weights, listened_items, k=k)
 
         if not rec:
             continue

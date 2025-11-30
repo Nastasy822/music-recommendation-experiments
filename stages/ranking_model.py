@@ -21,10 +21,6 @@ class Ranking(BaseStage):
 
         train_df = pl.scan_parquet("data/train_df_preprocessed.parquet")
         test_df  = pl.scan_parquet("data/test_df_preprocessed_for_eval.parquet") 
-        history =  pl.scan_parquet("data/train_encoded_lf.parquet")
-        users_history = build_users_history(history, last_days=30)
-
-
 
         with open("data/item_map.json", "r", encoding="utf-8") as f:
             item_map = json.load(f)
@@ -66,4 +62,4 @@ class Ranking(BaseStage):
 
 
         hybrid.use_filter = False
-        evaluate_model(hybrid, users_history, test_df.filter(pl.col("uid")<500) , 10)
+        evaluate_model(hybrid, test_df.filter(pl.col("uid")<500) , 10)
