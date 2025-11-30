@@ -268,24 +268,29 @@ flowchart LR
         RANK["CatBoost"]
     end
 
-    %% === Отдельный нижний блок Feature Extraction ===
+    %% === Feature Extraction ===
     FEATS["Feature Extraction"]
 
-    %% === Потоки данных ===
+    %% === Потоки ===
     RETRIEVAL --> FILTER
     FILTER --> RANK
     FEATS --> RANK
 
-    %% === Цветовые стили ===
+    %% === Стили ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
-    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#1a5c1a;
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
     class RANK ranking;
     class FEATS features;
+
+    %% === Скрываем рамки Row1 / Row2 / Row3 ===
+    style Row1 fill:transparent,stroke-width:0
+    style Row2 fill:transparent,stroke-width:0
+    style Row3 fill:transparent,stroke-width:0
 ```
 
 
