@@ -241,23 +241,21 @@ flowchart LR
     subgraph RETRIEVAL ["Retrieval"]
         direction LR
 
-        subgraph Row1
-            direction TB
-            PopAll["Тренды последних 5 дней"]
-            PopUser["Топ прослушанных за последние 20 дней"]
-        end
 
-        subgraph Row2
-            direction TB
-            SIM["Songs embeddings"]
-            ITEMKNN["ItemKNN"]
-        end
+        direction TB
+        PopAll["Тренды последних 5 дней"]
+        PopUser["Топ прослушанных за последние 20 дней"]
 
-        subgraph Row3
-            direction TB
-            GRAPH["Graph-based"]
-            ALS["ALS"]
-        end
+
+    
+        direction TB
+        SIM["Songs embeddings"]
+        ITEMKNN["ItemKNN"]
+
+        direction TB
+        GRAPH["Graph-based"]
+        ALS["ALS"]
+
     end
 
     subgraph SORTING ["Sorting"]
