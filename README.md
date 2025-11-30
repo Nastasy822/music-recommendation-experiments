@@ -251,13 +251,12 @@ flowchart LR
         FILTER["Фильтрация уже просмотренных"]
     end
 
-    subgraph FEATURES ["Feature Extraction"]
-        FEATS["Feature Extraction"]
-    end
-
     subgraph RANKING ["Ranking"]
         RANK["CatBoost"]
     end
+
+    %% === Отдельный нижний блок Feature Extraction ===
+    FEATS["Feature Extraction"]
 
     %% === Потоки данных ===
     PopAll --> FILTER
@@ -267,19 +266,19 @@ flowchart LR
     ITEMKNN --> FILTER
     GRAPH --> FILTER
 
-    FILTER --> FEATS
+    FILTER --> RANK
     FEATS --> RANK
 
     %% === Цветовые стили ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
-    classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
     classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+    classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
-    class FEATS features;
     class RANK ranking;
+    class FEATS features;
 ```
 
 
