@@ -191,7 +191,7 @@ class HybridModel:
         print("Prepere data for rancin model")
       
         train_df = pd.DataFrame()
-        for user_id in tqdm(hybrid_train_users):
+        for user_id in tqdm(hybrid_train_users[:500]):
 
             
             # кандидаты от гибридной системы
