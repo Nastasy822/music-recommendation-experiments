@@ -259,12 +259,7 @@ flowchart LR
     FEATS["Feature Extraction"]
 
     %% === Потоки данных ===
-    PopAll --> FILTER
-    PopUser --> FILTER
-    SIM --> FILTER
-    ALS --> FILTER
-    ITEMKNN --> FILTER
-    GRAPH --> FILTER
+    RETRIEVAL --> FILTER
 
     FILTER --> RANK
     FEATS --> RANK
