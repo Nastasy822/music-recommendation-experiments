@@ -1,7 +1,6 @@
 from catboost import CatBoostRanker
 from utils.evaluate import filtering_listened_items
-from utils.models import *
-from utils.embeddings import *
+
 
 class CandidateGenerator:
     def __init__(self):
