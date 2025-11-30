@@ -237,25 +237,20 @@ pd.DataFrame(
 ```mermaid
 flowchart LR
 
-    %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval"]
         direction LR
-
-
-        direction TB
-        PopAll["Тренды последних 5 дней"]
-        PopUser["Топ прослушанных за последние 20 дней"]
-
-
-    
-        direction TB
-        SIM["Songs embeddings"]
-        ITEMKNN["ItemKNN"]
-
-        direction TB
-        GRAPH["Graph-based"]
-        ALS["ALS"]
-
+        subgraph C1[""]
+            direction TB
+            PopAll["Тренды последних 5 дней"]
+            PopUser["Топ прослушанных за последние 20 дней"]
+            SIM["Songs embeddings"]
+        end
+        subgraph C2[""]
+            direction TB
+            ITEMKNN["ItemKNN"]
+            GRAPH["Graph-based"]
+            ALS["ALS"]
+        end
     end
 
     subgraph SORTING ["Sorting"]
@@ -266,25 +261,21 @@ flowchart LR
         RANK["CatBoost"]
     end
 
-    %% === Отдельный нижний блок Feature Extraction ===
     FEATS["Feature Extraction"]
 
-    %% === Потоки данных ===
     RETRIEVAL --> FILTER
     FILTER --> RANK
     FEATS --> RANK
 
-    %% === Цветовые стили ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
-    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+    classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#1a5c1a;
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
     class RANK ranking;
     class FEATS features;
-
 ```
 
 
