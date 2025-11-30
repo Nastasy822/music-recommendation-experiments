@@ -215,8 +215,6 @@ class HybridModel:
         self.train_df = self.train_df.merge(self.user_features, on=["uid"], how="left")
         self.train_df = self.train_df.merge(self.item_user_features, on=["uid", "item_id"], how="left") 
 
-
-
         self.train_df = self.train_df.fillna(value=self.fill_values)
 
 

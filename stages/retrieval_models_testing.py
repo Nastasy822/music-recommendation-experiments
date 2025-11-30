@@ -11,20 +11,37 @@ from utils.evaluate import evaluate_model
 from utils.maps_creater import build_users_history
 import json
 
+from box import ConfigBox
+from ruamel.yaml import YAML
+
+
+models_config = {
+    "MostPop_by_likes":         MostPop_by_likes,
+    "MostPop_by_listen":        MostPop_by_listen,
+    "NewItemsLastNDays":        NewItemsLastNDays,
+    "LastListenRecommender":    LastListenRecommender,
+    "ALS":                      ALS,
+    "BM25Rec":                  BM25Rec,
+    "ItemKNN":                  ItemKNN,
+    "BPR":                      BPR,
+    "RandomWalkWithRestart":    RandomWalkWithRestart,
+    "CBF_by_embeding_kmean":    CBF_by_embeding_kmean,
+}
+
 
 class RetrievalModels(BaseStage):
     def __init__(self):
         super().__init__()
-        pass
+
+        yaml = YAML(typ='safe')
+        params = ConfigBox(yaml.load(open("params.yaml", encoding='utf-8')))
+        self.models = params.retrivals.models
+
 
     def run(self):
-
+        
         train_df = pl.scan_parquet("data/train_df_preprocessed.parquet")
         test_df  = pl.scan_parquet("data/test_df_preprocessed_for_eval.parquet") 
-        history =  pl.scan_parquet("data/train_encoded_lf.parquet")
-        users_history = build_users_history(history, last_days=30)
-
-
 
         with open("data/item_map.json", "r", encoding="utf-8") as f:
             item_map = json.load(f)
@@ -40,60 +57,16 @@ class RetrievalModels(BaseStage):
             .drop_nulls()
         )
 
-        print("MostPop_by_likes")
-        model = MostPop_by_likes()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
+        for model_name in self.models:
+            print(model_name)
+            model = models_config[model_name]() 
 
-        print("MostPop_by_listen")
-        model = MostPop_by_listen()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
+            if model_name == "RandomWalkWithRestart":
+                model.fit(train_df, items_meta)
+            else:
+                model.fit(train_df)
 
-        print("NewItemsLastNDays")
-        model = NewItemsLastNDays()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
+            evaluate_model(model, test_df)
+ 
+            
 
-        print("LastListenRecommender")
-        model = LastListenRecommender()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df, 50) # 50 потому что в планах фильтровать последние 50 прослушанных 
-
-        print("ALS")
-        model = ALS()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
-
-        print("BM25Rec")
-        model = BM25Rec()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
-
-        print("ItemKNN")
-        model = ItemKNN()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df, k=10)
-
-        print("BPR")
-        model = BPR()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
-
-
-        print("BPR")
-        model = BPR()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df)
-      
-
-        print("RandomWalkWithRestart")
-        model = RandomWalkWithRestart()
-        model.fit(train_df, items_meta)
-        evaluate_model(model, users_history, test_df)
-
-
-        print("CBF_by_embeding_kmean")
-        model = CBF_by_embeding_kmean()
-        model.fit(train_df)
-        evaluate_model(model, users_history, test_df , 10)

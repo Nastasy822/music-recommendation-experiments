@@ -2,3 +2,17 @@ base:
   samplings:
     - train
     - test
+
+
+retrivals:
+  models:
+    - MostPop_by_likes
+    - MostPop_by_listen
+    - NewItemsLastNDays
+    - LastListenRecommender
+    - ALS
+    - BM25Rec
+    - ItemKNN
+    - BPR
+    - RandomWalkWithRestart
+    - CBF_by_embeding_kmean
