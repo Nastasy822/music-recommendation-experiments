@@ -1,17 +1,160 @@
 base:
-  samplings:
-    - train
-    - test
+  column_names:
+    timestamp: "timestamp"
+    user_id: "uid"
+    item_id: "item_id"
+    event_type: "event_type"
+    weights: "weights"
+    album_id: "album_id"
+    artist_id: "artist_id"
+    played_ratio_max: "played_ratio_max"
+    listen_count: "listen_count"
+  
+  max_predicts_count: 2000
 
 
-retrivals:
-  models:
-    - MostPopular
-    - NewItemsLastNDays
-    - LastListenRecommender
-    - ALS
-    - BM25
-    - ItemKNN
-    - BPR
-    - RandomWalkWithRestart
-    - KMeansEmbedding
+# set paths for save/load
+retrieval_models:
+  # MostPopular: "weights/MostPopular.pkl" 
+  # NewItemsLastNDays: "weights/NewItemsLastNDays.pkl" 
+  # LastListenRecommender: "weights/LastListenRecommender.pkl" 
+  # ALS: "weights/ALS.pkl" 
+  # BM25: "weights/BM25.pkl" 
+  # ItemKNN: "weights/ItemKNN.pkl" 
+  # BPR: "weights/BPR.pkl" 
+  RandomWalkWithRestart: "weights/RandomWalkWithRestart.pkl" 
+  # KMeansEmbedding: "weights/KMeansEmbedding.pkl" 
+
+
+# set num of candidats per model
+candidate_generator:
+  MostPopular: 100
+  NewItemsLastNDays: 100
+  LastListenRecommender: 0
+  ALS: 200
+  BM25: 0
+  ItemKNN: 200
+  BPR: 0
+  RandomWalkWithRestart: 200
+  KMeansEmbedding: 0
+
+
+MostPopular:
+  type_event: "like"
+  last_days: 5
+
+
+NewItemsLastNDays:
+  last_days: 5
+
+
+LastListenRecommender:
+  hour: 2
+  decay: 0.9
+
+
+ItemKNN:
+  hour: 2
+  decay: 0.9
+
+
+ALS:
+  factors: 128
+  regularization: 0.001
+  iterations: 15
+  random_state: 42
+  calculate_training_loss: True
+ 
+  
+BM25:
+  K: 200
+  K1: 0.1
+  B: 0.75
+  num_threads: 0
+  
+
+BPR:
+  factors: 64       
+  learning_rate: 0.1
+  regularization: 0.01
+  iterations: 20
+  random_state: 42     
+
+
+RandomWalkWithRestart:
+  played_ratio_max: 50
+  listen_count_limit: 5
+  low_weights_limit: 1e-6
+  high_weights_limit: 10.0
+  album_edges_weights: 10.0
+  artist_edges_weights: 10.0
+  alpha: 0.5 
+  tol: 1e-2
+  max_iter: 2
+
+
+KMeansEmbedding:
+  clusterizer: SphericalMeanShift
+  use_jitter: True
+  jitter_level: 0.01
+  SphericalMeanShift: 
+      kappa: 5.0
+      max_iter: 30
+      tol: 1e-4            
+      merge_angle_deg: 5.0  
+
+     
+HybridModel:
+  iterations: 5000 
+  learning_rate: 0.01
+  depth: 6
+  loss_function: "YetiRank"
+  verbose: 100
+  task_type: "GPU"
+  test_size: 0.2
+  item_features:
+    - "item_plays_last_5d"	
+    - "item_plays_last_30d"	
+    - "item_age_days"	
+    - "item_trend"
+    - "item_plays_for_time_profile" 
+    - "item_morning_share"          
+    - "item_day_share"              
+    - "item_evening_share"          
+    - "item_night_share"            
+    - "item_weekday_share"         
+    - "item_weekend_share"         
+    - "item_avg_listen_hour"        
+    - "item_avg_listen_weekday"                                                             
+
+  user_features:
+    - "user_total_plays"
+    - "user_active_days"
+    - "user_unique_tracks"
+    - "median_daily_plays"
+    - "unique_tracks_share"
+    - "days_since_last_play"
+    - "user_plays_for_time_profile"
+    - "morning_share" 
+    - "day_share"
+    - "evening_share"
+    - "night_share"
+    - "weekday_share"
+    - "weekend_share"
+    - "avg_listen_hour"
+    - "avg_listen_weekday"
+                                                
+  item_user_features:
+    - "listen_count"
+    - "played_ratio_max"
+    - "dislike_flag"
+    - "like_flag"
+    - "ui_days_since_last_play"
+    - "artist_listen_count"
+    - "album_listen_count"
+ 
+  scores_model:
+    - "score_MostPopular"
+    - "score_NewItemsLastNDays"
+    - "score_ALS"
+    - "score_ItemKNN"

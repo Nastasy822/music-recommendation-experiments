@@ -3,11 +3,8 @@ from scipy.sparse import coo_matrix
 import numpy as np
 
 
-HOUR_SECONDS = 60 * 60
-DAY_SECONDS = 24 * HOUR_SECONDS
-
 def add_exponential_decay(train_df: pl.LazyFrame | pl.DataFrame, tau: float):
-    # 0, 0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1.0, 2
+
     # Фильтрация по условиям
     train_df = (
         train_df
@@ -27,37 +24,17 @@ def add_exponential_decay(train_df: pl.LazyFrame | pl.DataFrame, tau: float):
         )
         .group_by(["uid", "item_id"]).agg(pl.sum("weight").alias("conf"))
         .with_columns(
-            pl.when(pl.col("conf") < 1e-9).then(0).otherwise(pl.col("conf")).alias("conf")
+            pl.when(pl.col("conf") < 1e-9).then(0).otherwise(pl.col("conf")).alias("weights")
         )
     )
 
     return train_df
 
 
-def create_user_item_matrix(dlf: pl.LazyFrame):
-    # сразу выбираем только нужные колонки и кастуем типы
-    df = (
-        dlf
-        .select([
-            pl.col("uid").cast(pl.Int32).alias("uid"),
-            pl.col("item_id").cast(pl.Int32).alias("item_id"),
-            pl.col("conf").cast(pl.Int32).alias("conf"),
-        ])
-        .collect()  # вот здесь LazyFrame -> DataFrame
-    )
-
-    rows = df["uid"].to_numpy()
-    cols = df["item_id"].to_numpy()
-    data = df["conf"].to_numpy()
-
-    mat = coo_matrix((data, (rows, cols))).tocsr()
-    return mat
-
-
 def merge_data_by_count(train_df: pl.LazyFrame | pl.DataFrame, last_days = 300):
 
     max_timestamp = train_df.select(pl.col("timestamp").max()).collect().to_series()[0]
-    cutoff_ts = max_timestamp - last_days * DAY_SECONDS
+    cutoff_ts = max_timestamp - last_days * 60 * 60 * 24
 
     train_df = train_df.filter(pl.col("timestamp") > cutoff_ts)
     # 1) Имплицитный сигнал: сколько раз слушали и средний процент прослушивания
@@ -100,18 +77,32 @@ def merge_data_by_count(train_df: pl.LazyFrame | pl.DataFrame, last_days = 300):
     return train_merge
 
 
+def create_target_last_day(train_df):
+
+    max_timestamp = train_df.select(pl.col("timestamp").max()).collect().item()
+    last_day = max_timestamp - 60 * 60 * 24 * 2
+    
+    listens = (
+        train_df
+        .filter(pl.col("event_type") == "listen")
+        .filter(pl.col("timestamp") > last_day)
+        .filter(pl.col("played_ratio_pct") > 50)
+        .select(["uid" , "item_id"])
+        .unique()
+        .with_columns(pl.lit(1).alias("weights"))
+    )
+    return listens 
+
+
 # ToDo формулу описать!!! зачем логорифирование и описать смысл коэффициентов почему max  
 def calculate_conf(lf: pl.LazyFrame) -> pl.LazyFrame:
     lf = lf.filter(pl.col("played_ratio_max")>50)    
     return lf.with_columns(
         (
-            # 20.0 * pl.col("like_flag").cast(pl.Float64)
-            # - 10.0 * pl.col("dislike_flag").cast(pl.Float64)
              (
                 pl.col("listen_count").cast(pl.Float64)
-                # * (pl.col("played_ratio_max").cast(pl.Float64) / 100.0)
             ).log1p()
-        ).alias("conf")
+        ).alias("weights")
     )
 
 
@@ -121,7 +112,7 @@ def build_id_maps(train_lf: pl.LazyFrame):
     Собирает map-словарь для uid и item_id из train_lf.
     Возвращает два словаря: user_map и item_map.
     """
-    # map по пользователям
+
     user_map_lf = (
         train_lf
         .select("uid")
@@ -129,7 +120,6 @@ def build_id_maps(train_lf: pl.LazyFrame):
         .with_row_count("uid_index")
     )
 
-    # map по айтемам
     item_map_lf = (
         train_lf
         .select("item_id")
@@ -137,7 +127,6 @@ def build_id_maps(train_lf: pl.LazyFrame):
         .with_row_count("item_index")
     )
 
-    # материализация (они маленькие)
     user_df = user_map_lf.collect()
     item_df = item_map_lf.collect()
 
@@ -145,3 +134,74 @@ def build_id_maps(train_lf: pl.LazyFrame):
     item_map = dict(zip(item_df["item_id"].to_list(), item_df["item_index"].to_list()))
 
     return user_map, item_map
+
+
+def map_with_id_maps(df_lf: pl.LazyFrame, user_map: dict, item_map: dict):
+    """
+    Принимает LazyFrame + словари маппинга, возвращает LazyFrame
+    с заменёнными uid/item_id.
+    """
+    # превращаем dict → LazyFrame для join (самый быстрый способ)
+    user_map_lf = pl.DataFrame({
+        "uid": list(user_map.keys()),
+        "uid_index": list(user_map.values())
+    }).lazy()
+
+    item_map_lf = pl.DataFrame({
+        "item_id": list(item_map.keys()),
+        "item_index": list(item_map.values())
+    }).lazy()
+
+    # маппинг
+    encoded_lf = (
+        df_lf
+        .join(user_map_lf, on="uid", how="left")
+        .join(item_map_lf, on="item_id", how="left")
+        .drop(["uid", "item_id"])
+        .rename({"uid_index": "uid", "item_index": "item_id"})
+    )
+
+    return encoded_lf
+
+
+
+def build_users_history_normal(train_df: pl.LazyFrame | pl.DataFrame):
+    hour = 0.5
+    decay = 0.9
+    tau = 0.0 if hour == 0 else decay ** (1 / 24 / 60 / 60 / (hour / 24))
+
+    train_df = (
+        train_df
+        .filter((pl.col("played_ratio_pct") >= 100) | (pl.col("event_type") == "like"))
+        .filter(pl.col("is_organic") == 1) # ЧТобы опираться именно на пользовательские вкусы
+        # .filter(pl.col("event_type") == "listen")
+        # максимум timestamp по uid
+        .with_columns(
+            pl.max("timestamp").over("uid").alias("max_timestamp")
+        )
+        # "старость" записи
+        .with_columns(
+            (pl.col("max_timestamp") - pl.col("timestamp")).alias("delta")
+        )
+        # экспоненциальное затухание, как в примере: tau ** delta
+        .with_columns(
+            (tau ** pl.col("delta")).alias("weight")
+        )
+        .group_by(["uid", "item_id"]).agg(pl.sum("weight").alias("conf"))
+        .with_columns(
+            pl.when(pl.col("conf") < 1e-9).then(0).otherwise(pl.col("conf")).alias("conf")
+        )
+        .filter(pl.col("conf") > 0)
+        .select(["uid", "item_id"])
+        .unique()
+        .group_by("uid")
+        .agg(pl.col("item_id").alias("items"))
+        .collect()
+        
+    )
+
+    # return train_df
+    return {
+        row["uid"]: set(row["items"])
+        for row in train_df.iter_rows(named=True)
+    }

@@ -1,8 +1,8 @@
 import polars as pl
-
+from helpers.params_provider import ParamsProvider
 
 import numpy as np
-import polars as pl
+
 
 HOUR_SECONDS = 60 * 60
 DAY_SECONDS = 24 * HOUR_SECONDS
@@ -448,3 +448,49 @@ def build_item_stats(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
     item_stats = item_stats.join(build_item_time_profile(df), on="item_id") 
 
     return item_stats
+
+
+class FeaturesExtractor:
+    def __init__(self):
+        self.params = ParamsProvider().get_params()
+        self.user_id_column =  self.params.base.column_names.user_id
+        self.item_id_column =  self.params.base.column_names.item_id
+        
+
+    def get_features(self, train_df, items_meta):
+        
+        self.item_features =  (
+                            build_item_stats(train_df )
+                            .select([ self.item_id_column ] + self.params.HybridModel.item_features )
+                            .collect()
+                            .to_pandas()
+        )
+            
+        self.user_features =  (
+                            user_music_stats(train_df )
+                            .select([self.user_id_column] + self.params.HybridModel.user_features)
+                            .collect()
+                            .to_pandas()
+        )
+        
+
+        self.item_user_features =  (
+                            build_item_user_profile(train_df, items_meta )
+                            .select([self.user_id_column , self.item_id_column ,] + self.params.HybridModel.item_user_features)
+                            .collect()
+                            .to_pandas()
+        )
+        
+
+        self.item_features.set_index(self.item_id_column , inplace=True)
+        self.user_features.set_index(self.user_id_column , inplace=True)
+        self.item_user_features.set_index([self.user_id_column , self.item_id_column], inplace=True)
+        
+
+        features = self.item_user_features
+
+        features = features.join(self.item_features, on=[self.item_id_column], how="left")
+        features = features.join(self.user_features, on=[self.user_id_column], how="left")
+
+        return features
+

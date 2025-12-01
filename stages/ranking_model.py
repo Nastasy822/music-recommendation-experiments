@@ -4,8 +4,7 @@ import numpy as np
 import polars as pl
 
 from stages.base_stage import BaseStage
-from utils.retrivel import CandidateGenerator
-from utils.ranking import HybridModel
+from models.hybrid import HybridModel
 from helpers.evaluate import evaluate_model
 
 import json
@@ -38,26 +37,10 @@ class Ranking(BaseStage):
         print("CandidateGenerator")
         
 
-        candidate_model = CandidateGenerator()
-        candidate_model.fit(train_df, items_meta)
-
         print("HybridModel")
 
         hybrid = HybridModel()
-        hybrid.fit(train_df, candidate_model, items_meta)
-
-
-        hybrid.hybrid_model = CatBoostRanker(
-            iterations=5000,
-            learning_rate=0.01,
-            depth=6,
-            loss_function="YetiRank",
-            verbose=10,
-            task_type="GPU",
-        )
-
-
-        hybrid.fit_ranker()
+        hybrid.fit(train_df, items_meta)
 
 
         hybrid.use_filter = False
