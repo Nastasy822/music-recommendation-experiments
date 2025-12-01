@@ -3,153 +3,166 @@ import polars as pl
 from scipy import sparse
 from models.utils import merge_data_by_count
 from models.base_model import BaseModel
-
+import json
 
 class RandomWalkWithRestart(BaseModel):
     def __init__(self):
-        pass
+        super().__init__()
 
-    def fit(self, train_df, items_meta):
+        self.played_ratio_max = self.params.RandomWalkWithRestart.played_ratio_max
+        self.low_weights_limit = self.params.RandomWalkWithRestart.low_weights_limit
+        self.high_weights_limit = self.params.RandomWalkWithRestart.high_weights_limit
+        self.artist_edges_weights = self.params.RandomWalkWithRestart.artist_edges_weights
+        self.album_edges_weights = self.params.RandomWalkWithRestart.album_edges_weights
+        self.listen_count_limit = self.params.RandomWalkWithRestart.listen_count_limit
+        self.alpha = self.params.RandomWalkWithRestart.alpha
+        self.tol = self.params.RandomWalkWithRestart.tol
+        self.max_iter = self.params.RandomWalkWithRestart.max_iter
+
+
+    def fit(self, train_df):
+        
+        with open("data/item_map.json", "r", encoding="utf-8") as f:
+            item_map = json.load(f)
+
+        item_map = {int(k): v for k, v in item_map.items()}
+
+        items_meta = (
+            pl.scan_parquet("data/source/items_meta.parquet")
+            .with_columns(
+                pl.col("item_id").replace(item_map)
+            )
+            .unique(subset=["item_id"])
+            .drop_nulls()
+        )
 
         df_merged = merge_data_by_count(train_df)
         lf_user_track = df_merged.join(
-                items_meta.select(["item_id", "artist_id", "album_id"]),
-                on="item_id",
+                items_meta.select([self.item_id_column, self.artist_id_column, self.album_id_column]),
+                on=self.item_id_column,
                 how="left",
             )
 
         
-        df = lf_user_track.filter(pl.col("played_ratio_max")>=50)
-        df = df.filter(pl.col("listen_count")>5).collect()  
+        self.df_user_track = lf_user_track.filter(pl.col(self.played_ratio_max_column)>=self.played_ratio_max)
+        self.df_user_track  = self.df_user_track .filter(pl.col(self.listen_count_column)>self.listen_count_limit).collect()  
         
         df_ut = (
-            df
+            self.df_user_track 
             .with_columns(
                 (
-                    (
-                        (
-                            pl.col("listen_count").cast(pl.Float64)
-                        ).log1p()
-                    )
-                    .clip(1e-6, 10.0)
-                ).alias("w")
+                    pl.col(self.listen_count_column)
+                    .cast(pl.Float64)
+                    .log1p()
+                    .clip(self.low_weights_limit , self.high_weights_limit)
+                )
+            .alias(self.weights_column)
             )
                 
             .select(
-                "uid",
-                "item_id",
-                "w",
+                self.user_id_column,
+                self.item_id_column,
+                self.weights_column,
             )
-            .group_by(["uid", "item_id"])
-            .agg(pl.col("w").sum().alias("weight"))
+            .group_by([self.user_id_column, self.item_id_column])
+            .agg(pl.col(self.weights_column).sum().alias(self.weights_column))
         )
 
-        # --- track–artist, вес = 10 ---
+        # --- track–artist
         df_ta = (
-            df
-            .select("item_id", "artist_id")
+            self.df_user_track 
+            .select(self.item_id_column, self.artist_id_column)
             .unique()
-            .with_columns(pl.lit(10.0).alias("weight"))
+            .with_columns(pl.lit(self.artist_edges_weights).alias(self.weights_column))
         )
         
-        # --- track–album, вес = 10 ---
+        # --- track–album
         df_tal = (
-            df
-            .select("item_id", "album_id")
+            self.df_user_track 
+            .select(self.item_id_column, self.album_id_column)
             .unique()
-            .with_columns(pl.lit(10.0).alias("weight"))
+            .with_columns(pl.lit(self.album_edges_weights).alias(self.weights_column))
         )
 
         
-        # Уникальные ID по типам узлов
-        user_ids = df["uid"].unique().to_list()
-        track_ids = df["item_id"].unique().to_list()
-        artist_ids = df["artist_id"].unique().to_list()
-        album_ids = df["album_id"].unique().to_list()
+        # unique ID by nodes
+        user_ids = self.df_user_track[self.user_id_column].unique().to_list()
+        self.track_ids = self.df_user_track[self.item_id_column].unique().to_list()
+        artist_ids = self.df_user_track[self.artist_id_column].unique().to_list()
+        album_ids = self.df_user_track[self.album_id_column].unique().to_list()
         
         n_users = len(user_ids)
-        n_tracks = len(track_ids)
+        self.n_tracks = len(self.track_ids)
         n_artists = len(artist_ids)
         n_albums = len(album_ids)
         
-        # Смещения для каждого типа узла
+        # bias for nodes 
         offset_user = 0
-        offset_track = offset_user + n_users
-        offset_artist = offset_track + n_tracks
+        self.offset_track = offset_user + n_users
+        offset_artist = self.offset_track + self.n_tracks
         offset_album = offset_artist + n_artists
         
-        n_nodes = n_users + n_tracks + n_artists + n_albums
+        n_nodes = n_users + self.n_tracks + n_artists + n_albums
         
-        # Маппинги ID → индекс узла
-        user2idx = {u: offset_user + i for i, u in enumerate(user_ids)}
-        track2idx = {t: offset_track + i for i, t in enumerate(track_ids)}
+        # mapping ID → index node 
+        self.user2idx = {u: offset_user + i for i, u in enumerate(user_ids)}
+        track2idx = {t: self.offset_track + i for i, t in enumerate(self.track_ids)}
         artist2idx = {a: offset_artist + i for i, a in enumerate(artist_ids)}
         album2idx = {al: offset_album + i for i, al in enumerate(album_ids)}
         
-        # --- user–track рёбра ---
-        u_arr = df_ut["uid"].to_list()
-        t_arr_ut = df_ut["item_id"].to_list()
-        w_ut = df_ut["weight"].to_numpy()
+        # --- user–track edges ---
+        u_arr = df_ut[self.user_id_column].to_list()
+        t_arr_ut = df_ut[self.item_id_column].to_list()
+        w_ut = df_ut[self.weights_column].to_numpy()
         
-        rows_ut = np.fromiter((user2idx[u] for u in u_arr), dtype=np.int64, count=len(u_arr))
+        rows_ut = np.fromiter((self.user2idx[u] for u in u_arr), dtype=np.int64, count=len(u_arr))
         cols_ut = np.fromiter((track2idx[t] for t in t_arr_ut), dtype=np.int64, count=len(t_arr_ut))
         
-        # --- track–artist рёбра ---
-        t_arr_ta = df_ta["item_id"].to_list()
-        a_arr = df_ta["artist_id"].to_list()
-        w_ta = df_ta["weight"].to_numpy()
+        # --- track–artist edges ---
+        t_arr_ta = df_ta[self.item_id_column].to_list()
+        a_arr = df_ta[self.artist_id_column].to_list()
+        w_ta = df_ta[self.weights_column].to_numpy()
         
         rows_ta = np.fromiter((track2idx[t] for t in t_arr_ta), dtype=np.int64, count=len(t_arr_ta))
         cols_ta = np.fromiter((artist2idx[a] for a in a_arr), dtype=np.int64, count=len(a_arr))
         
-        # --- track–album рёбра ---
-        t_arr_tal = df_tal["item_id"].to_list()
-        al_arr = df_tal["album_id"].to_list()
-        w_tal = df_tal["weight"].to_numpy()
+        # --- track–album edges ---
+        t_arr_tal = df_tal[self.item_id_column].to_list()
+        al_arr = df_tal[self.album_id_column].to_list()
+        w_tal = df_tal[self.weights_column].to_numpy()
         
         rows_tal = np.fromiter((track2idx[t] for t in t_arr_tal), dtype=np.int64, count=len(t_arr_tal))
         cols_tal = np.fromiter((album2idx[al] for al in al_arr), dtype=np.int64, count=len(al_arr))
         
-        # Собираем все ориентированные рёбра
+        # collect all edges
         rows_dir = np.concatenate([rows_ut, rows_ta, rows_tal])
         cols_dir = np.concatenate([cols_ut, cols_ta, cols_tal])
         data_dir = np.concatenate([w_ut, w_ta, w_tal]).astype(np.float32)
         
-        # Делаем граф неориентированным: дублируем рёбра в обе стороны
+        # Making the graph undirected: duplicating edges in both directions
         rows_full = np.concatenate([rows_dir, cols_dir])
         cols_full = np.concatenate([cols_dir, rows_dir])
         data_full = np.concatenate([data_dir, data_dir])
         
-        # Разреженная матрица смежности A (CSR)
+        # Sparse adjacency matrix A (CSR)
         A = sparse.csr_matrix(
             (data_full, (rows_full, cols_full)),
             shape=(n_nodes, n_nodes),
             dtype=np.float32,
         )
         
-        # Нормируем строки A → стохастическая матрица переходов P
+        # We normalize the rows of A → stochastic transition matrix P
         row_sums = np.array(A.sum(axis=1)).flatten().astype(np.float64)
-        row_sums[row_sums == 0.0] = 1.0  # чтобы избежать деления на 0
+        row_sums[row_sums == 0.0] = 1.0  # to avoid division by 0
         
         D_inv = sparse.diags(1.0 / row_sums)
-        P = D_inv @ A  # P: каждая строка — распределение перехода
+        P = D_inv @ A  # P: each line is a transition distribution
         
-        # Для PPR удобнее использовать P^T
-        P_T = P.T.tocsr()
+        # For PPR it is more convenient to use P^T
+        self.P_T = P.T.tocsr()
         
-        self.df_user_track = df 
-
-        self.user2idx = user2idx
-        self.offset_track = offset_track
-        self.n_tracks = n_tracks
-        self.P_T = P_T
-        self.track_ids = track_ids
-
-    # --------------------------------------------------------
-    # 4. Функция Personalized PageRank
-    # --------------------------------------------------------
     
-    def personalized_pagerank(self, start_idx, alpha=0.85, tol=1e-2, max_iter=2):
+    def personalized_pagerank(self, start_idx):
 
         n = self.P_T.shape[0]
     
@@ -158,10 +171,10 @@ class RandomWalkWithRestart(BaseModel):
 
         x = np.full(n, 1.0 / n, dtype=np.float32)
     
-        for _ in range(max_iter):
-            x_new = alpha * (self.P_T @ x) + (1 - alpha) * v
-            # L1-норма разности
-            if np.linalg.norm((x_new - x).astype(np.float64), 1) < tol:
+        for _ in range(self.max_iter):
+            x_new = self.alpha * (self.P_T @ x) + (1 - self.alpha) * v
+
+            if np.linalg.norm((x_new - x).astype(np.float64), 1) < self.tol:
                 x = x_new
                 break
             x = x_new
@@ -169,17 +182,16 @@ class RandomWalkWithRestart(BaseModel):
         return x
 
 
-    def recommend(self, uid, alpha=0.5):
+    def recommend(self, uid):
 
         if uid not in self.user2idx:
             return [], []
     
         start_node_idx = self.user2idx[uid]
     
-        # Считаем personalized PageRank
-        scores = self.personalized_pagerank(start_node_idx, alpha=alpha)
+        scores = self.personalized_pagerank(start_node_idx)
     
-        # Берём только треки (их индексы идут подряд от offset_track)
+        #We take only tracks (their indices follow a sequence from offset_track)
         track_scores = scores[self.offset_track : self.offset_track + self.n_tracks]
     
         top_idx = np.argsort(-track_scores)

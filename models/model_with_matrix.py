@@ -1,17 +1,21 @@
-from models.utils import create_user_item_matrix, merge_data_by_count, calculate_conf
+from models.utils import merge_data_by_count, calculate_conf
 from models.base_model import BaseModel
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l2
 from models.utils import map_with_id_maps
 from models.utils import build_id_maps
 import numpy as np
+import polars as pl 
+
+from scipy.sparse import coo_matrix
 
 
 class ModelWithMatrix(BaseModel):
 
     def __init__(self):
+        
         super().__init__()
         self.model = None
-        self.N = 2000
+        
     
     def fit(self, train_df):
 
@@ -23,12 +27,31 @@ class ModelWithMatrix(BaseModel):
         
         train_df = map_with_id_maps(train_df, self.user_map, self.item_map)
         
-        self.matrix = create_user_item_matrix(train_df)
+        self.matrix = self.create_user_item_matrix(train_df)
 
-        self.matrix = self.matrix.tocsr().astype(np.double) # Алгоритм просит именно double
+        self.matrix = self.matrix.tocsr().astype(np.double) # The algorithm needs exactly double
         inplace_csr_row_normalize_l2(self.matrix)  
 
         self.model.fit(self.matrix)
+
+
+    def create_user_item_matrix(self, lf: pl.LazyFrame):
+        df = (
+            lf
+            .select([
+                pl.col(self.user_id_column).cast(pl.Int32).alias(self.user_id_column),
+                pl.col(self.item_id_column).cast(pl.Int32).alias(self.item_id_column),
+                pl.col(self.weights_column).cast(pl.Int32).alias(self.weights_column),
+            ])
+            .collect() 
+        )
+
+        rows = df[self.user_id_column].to_numpy()
+        cols = df[self.item_id_column].to_numpy()
+        data = df[self.weights_column].to_numpy()
+
+        matrix = coo_matrix((data, (rows, cols))).tocsr()
+        return matrix
 
 
     def recommend(self, uid):

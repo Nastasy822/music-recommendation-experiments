@@ -6,9 +6,8 @@ from helpers.params_provider import ParamsProvider
 from stages.base_stage import BaseStage
 from helpers.evaluate import evaluate_model
 from models.initialize_model import initialize_model
-from models.base_model import load_model
 
-class RetrievalModelsTesting(BaseStage):
+class RetrievalModelsTraining(BaseStage):
     def __init__(self):
         super().__init__()
 
@@ -17,13 +16,15 @@ class RetrievalModelsTesting(BaseStage):
   
     def run(self):
         
-        test_df  = pl.scan_parquet("data/test_df_preprocessed_for_eval.parquet") 
+        train_df = pl.scan_parquet("data/train_df_preprocessed.parquet")
 
         for model_name, model_path in self.models.items():
             print(model_name)
-            model = load_model(model_path) 
+            model = initialize_model(model_name) 
 
-            evaluate_model(model, test_df)
+            model.fit(train_df)
+            model.save(model_path)
+
  
             
 

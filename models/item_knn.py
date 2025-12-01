@@ -3,18 +3,19 @@ from models.utils import add_exponential_decay
 from models.utils import map_with_id_maps
 from sklearn.utils.sparsefuncs_fast import inplace_csr_row_normalize_l2
 from models.utils import build_id_maps
-from models.utils import create_user_item_matrix
+
 import numpy as np 
 
-from models.base_model import BaseModel
+from models.model_with_matrix import ModelWithMatrix
 
 
-class ItemKNN(BaseModel):
+class ItemKNN(ModelWithMatrix):
 
     def __init__(self):
-        self.N = 2000
-        self.hour = 2
-        self.decay = 0.9
+        super().__init__()
+
+        self.hour = self.params.ItemKNN.hour
+        self.decay = self.params.ItemKNN.decay
 
 
     def fit(self, lf):
@@ -29,10 +30,10 @@ class ItemKNN(BaseModel):
         lf_tau = add_exponential_decay(lf, tau) 
         lf_simple = add_exponential_decay(lf, 1)
 
-        self.matrix = create_user_item_matrix(lf_simple)
+        self.matrix = self.create_user_item_matrix(lf_simple)
         self.matrix = self.matrix.tocsr().astype(np.double) 
 
-        self.matrix_tau = create_user_item_matrix(lf_tau)
+        self.matrix_tau = self.create_user_item_matrix(lf_tau)
         self.matrix_tau = self.matrix_tau.tocsr().astype(np.double) 
 
         self.user_embeddings = self.matrix_tau @ self.matrix.T
