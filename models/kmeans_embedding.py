@@ -23,19 +23,16 @@ class KMeansEmbedding(BaseModel):
         self.jitter_level = self.params.KMeansEmbedding.jitter_level
         self.use_jitter = self.params.KMeansEmbedding.use_jitter
 
+        self.embeddings_path = self.params.datasets.filtered_embeddings
+
 
     def fit(self, data):
 
-        with open("data/item_map.json", "r", encoding="utf-8") as f:
-            item_map = json.load(f)
-        
-        item_map = {int(k): v for k, v in item_map.items()}
-
-        self.index, self.item_ids = create_index("data/source/filtered_embeddings.parquet", item_map)
+        self.index, self.item_ids = create_index(self.embeddings_path)
 
         self.id2pos = {iid: i for i, iid in enumerate(self.item_ids)} 
         
-        self.history = build_users_history_normal(data)
+        self.history = build_user_listened_items(data)
 
 
 

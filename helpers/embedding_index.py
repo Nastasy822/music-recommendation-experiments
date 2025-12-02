@@ -9,11 +9,10 @@ import numpy as np
 import json
 
 
-def create_index(filename, item_id_map):
+def create_index(filename):
     lf = pl.scan_parquet(filename)
     CHUNK_SIZE = 50_000
     
-    # Возьмём размерность D из первого батча
     first_batch = (
         lf
         .slice(0, CHUNK_SIZE)
@@ -22,8 +21,6 @@ def create_index(filename, item_id_map):
         .to_pandas()
     )
 
-    first_batch["item_id"] = first_batch["item_id"].map(item_id_map)
-    
     first_batch = first_batch.dropna()    
 
     
@@ -36,7 +33,6 @@ def create_index(filename, item_id_map):
     all_item_ids = []
     all_item_ids.extend(first_batch["item_id"].tolist())
     
-    # Теперь итерируемся по файлу батчами
     offset = CHUNK_SIZE
     while True:
         batch = (
@@ -50,7 +46,6 @@ def create_index(filename, item_id_map):
         if batch.empty:
             break
     
-        batch["item_id"] = batch["item_id"].map(item_id_map)
         batch = batch.dropna()
     
         if batch.empty:

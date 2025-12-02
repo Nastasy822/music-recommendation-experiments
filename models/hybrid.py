@@ -7,18 +7,19 @@ import numpy as np
 from tqdm import tqdm
 
 from helpers.params_provider import ParamsProvider
-from helpers.candidate_generator import CandidateGenerator
-from helpers.features_extractor import FeaturesExtracto
 
 from stages.base_stage import BaseStage
 from helpers.evaluate import evaluate_model
 from models.utils import create_target_last_day
     
-    
 class HybridModel:
     def __init__(self):
 
         self.params = ParamsProvider().get_params()
+
+        self.user_id_column =  self.params.base.column_names.user_id
+        self.item_id_column =  self.params.base.column_names.item_id
+        self.weights_column =  self.params.base.column_names.weights
 
         self.hybrid_model = CatBoostRanker(
                                             iterations=self.params.HybridModel.iterations,
@@ -36,44 +37,53 @@ class HybridModel:
                                 *self.params.HybridModel.scores_model]
 
 
-        self.candidate_model = CandidateGenerator()
-        self.features_extractor = FeaturesExtractor()
 
-        self.user_id_column =  self.params.base.column_names.user_id
-        self.item_id_column =  self.params.base.column_names.item_id
-        self.weights_column =  self.params.base.column_names.weights
+        self.features = pl.scan_parquet(self.params.datasets.features)
+        self.train_candidates = pl.scan_parquet(self.params.datasets.train.candidates)
 
+        #чтобы на предсказаниях было побыстрее
+        self.test_candidates = pl.scan_parquet(self.params.datasets.test.candidates)
+                
+        self.test_pd = (
+            self.test_candidates.join(
+                self.features,
+                on=[self.user_id_column, self.item_id_column],
+                how="left",
+            )
+            .collect()
+            .fill_null(0)
+            .to_pandas()
+        )
 
     def create_dataset(self, train_df):
         
-        hybrid_train_users = train_df.select(self.user_id_column).unique().collect().to_series().to_list()
+        target_df = create_target_last_day(train_df)
+        # target_df = target_df.set_index([self.user_id_column , self.item_id_column ])
 
-        dataset = pd.DataFrame()
-        for user_id in tqdm(hybrid_train_users[:100]):
-            candidates_df =  self.candidate_model.recommend(user_id)
-            dataset = pd.concat([dataset, candidates_df])
-        
-        target_df = create_target_last_day(train_df).collect().to_pandas()
-
-        target_df = target_df.set_index([self.user_id_column , self.item_id_column ])
-        dataset = dataset.set_index([self.user_id_column , self.item_id_column ])
+        dataset = self.train_candidates
+        # dataset = dataset.set_index([self.user_id_column , self.item_id_column ])
 
         dataset = dataset.join(target_df, on=[self.user_id_column , self.item_id_column ], how="left")
         dataset = dataset.join(self.features, on=[self.user_id_column , self.item_id_column ], how="left") 
-        dataset = dataset.fillna(0)
+        dataset = dataset.fill_nan(0)
 
-        dataset = dataset.reset_index()
+        # dataset = dataset.reset_index()
         return dataset
 
 
-    def fit(self, train_df, items_meta):
+    def fit(self, train_df):
         
-        self.features = self.features_extractor.get_features(train_df, items_meta)
         data = self.create_dataset(train_df)
 
-        # удаляем кейсе где нечего ранжировать
-        data = data.groupby(self.user_id_column ).filter(lambda x: x[self.weights_column].nunique() > 1)
-        
+        # удаляем кейсы, где нечего ранжировать
+        data = data.filter(
+                        pl.col(self.weights_column)
+                        .n_unique()
+                        .over(self.user_id_column) > 1
+                    ).collect().to_pandas()
+
+        data = data.fillna(0)
+
         X_train, X_test, y_train, y_test, group_train, group_test = train_test_split(
             data[self.list_of_features],
             data[self.weights_column],
@@ -122,17 +132,14 @@ class HybridModel:
         )
 
 
+
+
     def recommend(self, uid):
-
-        candidates_df =  self.candidate_model.recommend(uid)
-
-        candidates_df = candidates_df.set_index([self.user_id_column , self.item_id_column ])
-        candidates_df = candidates_df.join(self.features, how="left")
-
-        candidates_df = candidates_df.fillna(0)
-    
+        
+        candidates_df = self.test_pd[self.test_pd[self.user_id_column] == uid]
+        candidates_df = candidates_df.copy()
         scores = self.hybrid_model.predict(candidates_df[self.list_of_features])
         candidates_df["score"] = scores
         candidates_df = candidates_df.sort_values("score", ascending=False)
         
-        return candidates_df.index.get_level_values(self.item_id_column ).tolist(), candidates_df["score"].tolist()
+        return candidates_df[self.item_id_column ].tolist(), candidates_df["score"].tolist()

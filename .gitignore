@@ -9,3 +9,4 @@ catboost_info
 .Trash-0
 .dvc
 /data
+/weights

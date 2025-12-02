@@ -23,4 +23,6 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-interaction --no-ansi --no-root
 RUN poetry shell
 
+RUN pip install faiss-cpu==1.13.0
+
 COPY . .

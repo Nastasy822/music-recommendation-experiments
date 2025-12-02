@@ -1,167 +1,260 @@
 import logging
-import numpy as np
 import polars as pl
+
 from stages.base_stage import BaseStage
-from helpers.big_data_helper import estimate_parquet_ram_usage, apply_function_by_batch, concat_files
-from models.utils import map_with_id_maps
-
-
+from helpers.big_data_helper import (
+    estimate_parquet_ram_usage,
+    apply_function_by_batch,
+    concat_files,
+)
+from helpers.params_provider import ParamsProvider
 from helpers.train_test_split import time_split_with_gap
+from helpers.data_cleaning import (
+    get_listen_data,
+    get_not_listen_data,
+    remove_duplicates_by_timestamps,
+    filter_rare_items,
+    filter_rare_users,
+    cut_track_len,
+    convert_reaction,
+    rename_events,
+    select_listened_data,
+)
 
-from helpers.data_cleaning import *
-from models.utils import build_id_maps
-import json
-
+logger = logging.getLogger(__name__)
 
 
 class DataPreprocessing(BaseStage):
     def __init__(self):
         super().__init__()
-        pass
 
-    def run(self):
+        self.params = ParamsProvider().get_params()
 
-        data = pl.scan_parquet("data/source/multi_event.parquet")
-        estimate_parquet_ram_usage("data/source/multi_event.parquet")
+        preprocessing_params = self.params.preprocessing
+        self.gap_size = preprocessing_params.gap_size
+        self.test_size = preprocessing_params.test_size
+        self.batch_size = preprocessing_params.batch_size
 
-        print("train_test_split")
-        train_lf, test_lf = train_test_split(data, 1, gap_size = 30)
-        train_lf.sink_parquet("data/train_df.parquet")
-        test_lf.sink_parquet("data/test_df.parquet")
+        self.source_dataset_path = self.params.datasets.source_dataset_path
 
-        estimate_parquet_ram_usage("data/train_df.parquet")
-        estimate_parquet_ram_usage("data/test_df.parquet")
+    # ===== Вспомогательные методы ==============================================
 
-        train_lf = pl.scan_parquet("data/train_df.parquet")
-        test_lf = pl.scan_parquet("data/test_df.parquet")
+    def _apply_by_batch(self, src_path: str, dst_path: str, func, column: str) -> None:
+        """Обёртка над apply_function_by_batch с использованием batch_size из параметров."""
+        logger.debug(
+            "Applying %s by batch on %s -> %s (column=%s, batch_size=%s)",
+            getattr(func, "__name__", str(func)),
+            src_path,
+            dst_path,
+            column,
+            self.batch_size,
+        )
+        apply_function_by_batch(
+            src_path,
+            dst_path,
+            func,
+            column,
+            batch_size=self.batch_size,
+        )
 
-        print("создаём словари индексов")
-        user_map, item_map = build_id_maps(train_lf)
+    def _split_train_test(self) -> None:
+        """Сканирование исходного датасета, split на train/test и сохранение."""
+        logger.info("Step 1: scanning source parquet: %s", self.source_dataset_path)
+        data_lf = pl.scan_parquet(self.source_dataset_path)
 
-        # мапим train/test
-        train_encoded_lf = map_with_id_maps(train_lf, user_map, item_map)
-        test_encoded_lf  = map_with_id_maps(test_lf,  user_map, item_map)
+        estimate_parquet_ram_usage(self.source_dataset_path)
 
-        train_encoded_lf.sink_parquet("data/train_encoded_lf.parquet")
-        test_encoded_lf.sink_parquet("data/test_encoded_lf.parquet")
+        logger.info(
+            "Step 1: splitting to train/test (test_size=%s, gap_size=%s)",
+            self.test_size,
+            self.gap_size,
+        )
+        train_lf, test_lf = time_split_with_gap(
+            data_lf,
+            self.test_size,
+            gap_size=self.gap_size,
+        )
 
-        
-        with open("data/item_map.json", "w", encoding="utf-8") as f:
-            json.dump(item_map, f, ensure_ascii=False, indent=2)
+        logger.info("Step 1: saving train/test parquet files")
+        train_lf.sink_parquet(self.params.datasets.train.source)
+        test_lf.sink_parquet(self.params.datasets.test.source)
 
-        with open("data/user_map.json", "w", encoding="utf-8") as f:
-            json.dump(user_map, f, ensure_ascii=False, indent=2)
+        estimate_parquet_ram_usage(self.params.datasets.train.source)
+        estimate_parquet_ram_usage(self.params.datasets.test.source)
 
+    def _build_listen_and_likes(self) -> None:
+        """Выделение listen и likes для train и test из source."""
+        train_paths = self.params.datasets.train
+        test_paths = self.params.datasets.test
 
-        print("Берем данные")
+        logger.info("Step 2: building listen datasets from source")
+        # TRAIN listen
+        self._apply_by_batch(
+            train_paths.source,
+            train_paths.listen,
+            get_listen_data,
+            "timestamp",
+        )
+        # TEST listen
+        self._apply_by_batch(
+            test_paths.source,
+            test_paths.listen,
+            get_listen_data,
+            "timestamp",
+        )
 
-        apply_function_by_batch("data/train_encoded_lf.parquet", 
-                         "data/train_df_listen.parquet", 
-                         get_listen_data, 
-                         "timestamp", 
-                         batch_size = 10_000_000)
+        logger.info("Step 2: building likes datasets from source")
+        # TRAIN likes
+        self._apply_by_batch(
+            train_paths.source,
+            train_paths.likes,
+            get_not_listen_data,
+            "timestamp",
+        )
+        # TEST likes
+        self._apply_by_batch(
+            test_paths.source,
+            test_paths.likes,
+            get_not_listen_data,
+            "timestamp",
+        )
 
-        apply_function_by_batch("data/test_encoded_lf.parquet", 
-                                "data/test_df_listen.parquet", 
-                                get_listen_data , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+    def _clean_train_listen(self) -> None:
+        """Очистка train.listen: дубликаты, редкие айтемы/юзеры, длина трека."""
+        listen_path = self.params.datasets.train.listen
 
-        apply_function_by_batch("data/train_encoded_lf.parquet", 
-                                "data/train_df_likes.parquet", 
-                                get_not_listen_data, 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+        logger.info("Step 3: cleaning train.listen (remove duplicates)")
+        self._apply_by_batch(
+            listen_path,
+            listen_path,
+            remove_duplicates_by_timestamps,
+            "timestamp",
+        )
 
-        apply_function_by_batch("data/test_encoded_lf.parquet", 
-                                "data/test_df_likes.parquet", 
-                                get_not_listen_data , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+        logger.info("Step 3: cleaning train.listen (filter rare items)")
+        self._apply_by_batch(
+            listen_path,
+            listen_path,
+            filter_rare_items,
+            "item_id",
+        )
 
+        logger.info("Step 3: cleaning train.listen (filter rare users)")
+        self._apply_by_batch(
+            listen_path,
+            listen_path,
+            filter_rare_users,
+            "uid",
+        )
 
-        print("train_df_listen")
+        logger.info("Step 3: cleaning train.listen (cut track length)")
+        self._apply_by_batch(
+            listen_path,
+            listen_path,
+            cut_track_len,
+            "timestamp",
+        )
 
-                # Из трейна remove_duplicates_by_timestamps
-        apply_function_by_batch("data/train_df_listen.parquet", 
-                                "data/train_df_listen_1.parquet", 
-                                remove_duplicates_by_timestamps , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+    def _process_likes(self) -> None:
+        """Обработка лайков (train и test): convert_reaction + rename_events."""
+        train_paths = self.params.datasets.train
+        test_paths = self.params.datasets.test
 
-        # Из трейна filter_rare_items
-        apply_function_by_batch("data/train_df_listen_1.parquet", 
-                                "data/train_df_listen_2.parquet", 
-                                filter_rare_items , 
-                                "item_id", 
-                                batch_size = 10_000_000)
+        logger.info("Step 4: processing TRAIN likes (convert_reaction, rename_events)")
+        self._apply_by_batch(
+            train_paths.likes,
+            train_paths.likes,
+            convert_reaction,
+            "uid",
+        )
+        self._apply_by_batch(
+            train_paths.likes,
+            train_paths.likes,
+            rename_events,
+            "timestamp",
+        )
 
-        # Из трейна filter_rare_users
-        apply_function_by_batch("data/train_df_listen_2.parquet", 
-                                "data/train_df_listen_3.parquet", 
-                                filter_rare_users , 
-                                "uid", 
-                                batch_size = 10_000_000)
+        logger.info("Step 4: processing TEST likes (convert_reaction, rename_events)")
+        self._apply_by_batch(
+            test_paths.likes,
+            test_paths.likes,
+            convert_reaction,
+            "uid",
+        )
+        self._apply_by_batch(
+            test_paths.likes,
+            test_paths.likes,
+            rename_events,
+            "timestamp",
+        )
 
-        # Из трейна cut_track_len
-        apply_function_by_batch("data/train_df_listen_3.parquet", 
-                                "data/train_df_listen_4.parquet", 
-                                cut_track_len , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+    def _filter_test_listened(self) -> None:
+        """
+        Фильтрация тестовых файлов likes и listen через select_listened_data.
+        (поведение такое же, как в исходном коде — через apply_function_by_batch).
+        """
+        test_paths = self.params.datasets.test
 
-        
-        print("train_df_likes")
+        logger.info("Step 5: filtering TEST likes with select_listened_data")
+        self._apply_by_batch(
+            test_paths.likes,
+            test_paths.likes,
+            select_listened_data,
+            "timestamp",
+        )
 
+        logger.info("Step 5: filtering TEST listen with select_listened_data")
+        self._apply_by_batch(
+            test_paths.listen,
+            test_paths.listen,
+            select_listened_data,
+            "timestamp",
+        )
 
-                # Из трейна convert_reaction
-        apply_function_by_batch("data/train_df_likes.parquet", 
-                                "data/train_df_likes_1.parquet", 
-                                convert_reaction , 
-                                "uid", 
-                                batch_size = 10_000_000)
+    def _concat_and_estimate(self) -> None:
+        """Конкатенация listen/likes в preprocessed и оценка ram usage."""
+        train_paths = self.params.datasets.train
+        test_paths = self.params.datasets.test
 
-        # Из трейна rename_events
-        apply_function_by_batch("data/train_df_likes_1.parquet", 
-                                "data/train_df_likes_2.parquet", 
-                                rename_events , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+        logger.info("Step 6: concatenating TEST listen+likes into preprocessed")
+        concat_files(
+            test_paths.listen,
+            test_paths.likes,
+            test_paths.preprocessed,
+        )
 
+        logger.info("Step 6: concatenating TRAIN listen+likes into preprocessed")
+        concat_files(
+            train_paths.listen,
+            train_paths.likes,
+            train_paths.preprocessed,
+        )
 
-        print("test_df_likes")
+        logger.info("Step 6: estimating RAM usage for preprocessed datasets")
+        estimate_parquet_ram_usage(train_paths.preprocessed)
+        estimate_parquet_ram_usage(test_paths.preprocessed)
 
-                # Из теста convert_reaction
-        apply_function_by_batch("data/test_df_likes.parquet", 
-                                "data/test_df_likes_1.parquet", 
-                                convert_reaction , 
-                                "uid", 
-                                batch_size = 10_000_000)
+    # ===== Основной пайплайн ====================================================
 
-        # Из теста rename_events
-        apply_function_by_batch("data/test_df_likes_1.parquet", 
-                                "data/test_df_likes_2.parquet", 
-                                rename_events , 
-                                "timestamp", 
-                                batch_size = 10_000_000)
+    def run(self) -> None:
+        logger.info("=== Starting data preprocessing pipeline ===")
 
-        
+        self._split_train_test()
+        logger.info("Step 1 completed: train/test split done")
 
-        print("concat_files")
+        self._build_listen_and_likes()
+        logger.info("Step 2 completed: listen/likes built for train & test")
 
-        concat_files("data/test_df_listen.parquet", "data/test_df_likes_2.parquet", "data/test_df_preprocessed.parquet")
+        self._clean_train_listen()
+        logger.info("Step 3 completed: train.listen cleaned")
 
-        concat_files("data/train_df_listen_4.parquet", "data/train_df_likes_2.parquet", "data/train_df_preprocessed.parquet")
+        self._process_likes()
+        logger.info("Step 4 completed: likes processed for train & test")
 
-        
-        estimate_parquet_ram_usage("data/train_df_preprocessed.parquet")
-        estimate_parquet_ram_usage("data/test_df_preprocessed.parquet")
+        self._filter_test_listened()
+        logger.info("Step 5 completed: test.listen & test.likes filtered with select_listened_data")
 
+        self._concat_and_estimate()
+        logger.info("Step 6 completed: preprocessed train/test saved")
 
-        print("Береме данные до препроцессинка (но закодированные)")
-        test_df = pl.scan_parquet("data/test_df_preprocessed.parquet")
-        test_users_items_df = remove_listened_data(test_df)
-
-        test_users_items_df.sink_parquet("data/test_df_preprocessed_for_eval.parquet")
-        
-        print("End")
+        logger.info("=== Data preprocessing pipeline finished successfully ===")

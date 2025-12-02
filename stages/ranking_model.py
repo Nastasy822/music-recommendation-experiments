@@ -3,6 +3,7 @@ from catboost import CatBoostRanker
 import numpy as np
 import polars as pl
 
+from helpers.params_provider import ParamsProvider
 from stages.base_stage import BaseStage
 from models.hybrid import HybridModel
 from helpers.evaluate import evaluate_model
@@ -11,37 +12,22 @@ import json
 
 
 class Ranking(BaseStage):
+
     def __init__(self):
         super().__init__()
-        pass
+        
+        self.params = ParamsProvider().get_params()
+        self.train_data_path = self.params.datasets.train.preprocessed
+        self.test_data_path = self.params.datasets.test.preprocessed
 
     def run(self):
 
-        train_df = pl.scan_parquet("data/train_df_preprocessed.parquet")
-        test_df  = pl.scan_parquet("data/test_df_preprocessed_for_eval.parquet") 
-
-        with open("data/item_map.json", "r", encoding="utf-8") as f:
-            item_map = json.load(f)
-
-        item_map = {int(k): v for k, v in item_map.items()}
-
-        items_meta = (
-            pl.scan_parquet("data/source/items_meta.parquet")
-            .with_columns(
-                pl.col("item_id").replace(item_map)
-            )
-            .unique(subset=["item_id"])
-            .drop_nulls()
-        )
-
-        print("CandidateGenerator")
-        
-
-        print("HybridModel")
+        train_df = pl.scan_parquet(self.train_data_path)
+        test_df  = pl.scan_parquet(self.test_data_path) 
 
         hybrid = HybridModel()
-        hybrid.fit(train_df, items_meta)
+        hybrid.fit(train_df)
 
+        # model.save(model_path)
 
-        hybrid.use_filter = False
-        evaluate_model(hybrid, test_df.filter(pl.col("uid")<500) , 10)
+        evaluate_model(hybrid, test_df , 10)

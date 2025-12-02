@@ -6,6 +6,7 @@ from models.base_model import BaseModel
 import json
 
 class RandomWalkWithRestart(BaseModel):
+
     def __init__(self):
         super().__init__()
 
@@ -20,19 +21,15 @@ class RandomWalkWithRestart(BaseModel):
         self.max_iter = self.params.RandomWalkWithRestart.max_iter
 
 
+        self.items_meta_path = self.params.datasets.items_meta
+
+
     def fit(self, train_df):
         
-        with open("data/item_map.json", "r", encoding="utf-8") as f:
-            item_map = json.load(f)
-
-        item_map = {int(k): v for k, v in item_map.items()}
 
         items_meta = (
-            pl.scan_parquet("data/source/items_meta.parquet")
-            .with_columns(
-                pl.col("item_id").replace(item_map)
-            )
-            .unique(subset=["item_id"])
+            pl.scan_parquet(self.items_meta_path)
+            .unique(subset=[self.item_id_column])
             .drop_nulls()
         )
 
