@@ -131,8 +131,12 @@ class HybridModel:
             eval_set=test_pool,
         )
 
+    
+    def save(self,):
+        self.hybrid_model.save_model(self.params.HybridModel.weights_path)
 
-
+    def load(self,):
+        self.hybrid_model.load_model(self.params.HybridModel.weights_path)
 
     def recommend(self, uid):
         

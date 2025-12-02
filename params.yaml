@@ -134,7 +134,8 @@ KMeansEmbedding:
 
      
 HybridModel:
-  iterations: 50 
+  weights_path: "weights/hybrid_model.cbm"
+  iterations: 5000 
   learning_rate: 0.01
   depth: 6
   loss_function: "YetiRank"
