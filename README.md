@@ -26,6 +26,7 @@
   <img src="https://img.shields.io/badge/plotly-6.4.0-3f4f75?logo=plotly" />
   <img src="https://img.shields.io/badge/matplotlib-3.10.7-11557c" />  
   <img src="https://img.shields.io/badge/poetry-1.2.2-2c3e50?logo=poetry" />
+  <img src="https://img.shields.io/badge/jupyterlab-4.4.10-0288d1?logo=jupyter&logoColor=white" />
 </p>
 
 ---
