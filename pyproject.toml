@@ -23,6 +23,7 @@ plotly = "^6.4.0"
 matplotlib = "^3.10.7"
 implicit = {extras = ["cuda"], version = "^0.7.2"}
 dvc = "^3.64.0"
+polars = "^1.35.2"
 
 
 [build-system]

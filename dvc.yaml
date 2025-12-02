@@ -9,27 +9,94 @@ stages:
 
     params:
       - base
+      - datasets
+      - preprocessing
+
     outs:
-      - data/item_map.json
-      - data/user_map.json
       - data/train_df_preprocessed.parquet
-      - data/test_df_preprocessed_for_eval.parquet
+      - data/test_df_preprocessed.parquet
+
+
+  retrieval_models_training:
+    cmd: python dvc_stages_runner.py --stage retrieval_models_testing
+    deps:
+      - stages/retrieval_models_testing.py
+      - data/train_df_preprocessed.parquet
+
+    params:
+      - base
+      - retrieval_models
+      - MostPopular
+      - NewItemsLastNDays
+      - LastListenRecommender
+      - ALS
+      - BM25
+      - ItemKNN
+
+    outs:
+      - weights/ALS.pkl
+      - weights/ItemKNN.pkl
+      - weights/KMeansEmbedding.pkl
+      - weights/LastListenRecommender.pkl
+      - weights/MostPopular.pkl
+      - weights/NewItemsLastNDays.pkl
+      - weights/RandomWalkWithRestart.pkl
 
 
   retrieval_models_testing:
     cmd: python dvc_stages_runner.py --stage retrieval_models_testing
     deps:
       - stages/retrieval_models_testing.py
-      - data/item_map.json
-      - data/user_map.json
-      - data/train_df_preprocessed.parquet
-      - data/test_df_preprocessed_for_eval.parquet 
+      - data/test_df_preprocessed.parquet 
 
     params:
       - base
-      - retrivals
+      - retrieval_models
+      - MostPopular
+      - NewItemsLastNDays
+      - LastListenRecommender
+      - ALS
+      - BM25
+      - ItemKNN
 
 
 
+  features_extractor:
+    cmd: python dvc_stages_runner.py --stage features_extractor
+    deps:
+      - stages/features_extractor.py
+      - data/test_df_preprocessed.parquet 
+      - data/train_df_preprocessed.parquet 
+
+    params:
+      - base
+      - HybridModel
 
 
+  candidate_generator:
+    cmd: python dvc_stages_runner.py --stage candidate_generator
+    deps:
+      - stages/candidate_generator.py
+      - weights/ALS.pkl
+      - weights/ItemKNN.pkl
+      - weights/KMeansEmbedding.pkl
+      - weights/LastListenRecommender.pkl
+      - weights/MostPopular.pkl
+      - weights/NewItemsLastNDays.pkl
+      - weights/RandomWalkWithRestart.pkl
+
+    params:
+      - base
+      - HybridModel
+
+
+  candidate_generator:
+    cmd: python dvc_stages_runner.py --stage ranking_model
+    deps:
+      - stages/ranking_model.py
+      - data/test_df_preprocessed.parquet 
+      - data/train_df_preprocessed.parquet 
+
+    params:
+      - base
+      - HybridModel

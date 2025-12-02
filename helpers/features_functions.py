@@ -1,15 +1,43 @@
 import polars as pl
 from helpers.params_provider import ParamsProvider
 
-import numpy as np
-
+import numpy as np  # можно удалить, если реально нигде не используется
 
 HOUR_SECONDS = 60 * 60
 DAY_SECONDS = 24 * HOUR_SECONDS
 
-def build_item_user_profile(train_df, items_meta):
 
-    ldf = train_df.lazy() if isinstance(train_df, pl.DataFrame) else train_df
+def _as_lazy(df: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame:
+    """Гарантированно приводим вход к LazyFrame."""
+    return df.lazy() if isinstance(df, pl.DataFrame) else df
+
+
+# ======================================================================
+#   ITEM–USER PROFILE
+# ======================================================================
+
+def build_item_user_profile(
+    train_df: pl.LazyFrame | pl.DataFrame,
+    items_meta: pl.LazyFrame | pl.DataFrame,
+) -> pl.LazyFrame:
+    """
+    Строит профиль (uid, item_id) с имплицитными сигналами и аггрегатами по артисту/альбому.
+
+    Ожидает в train_df колонки как минимум:
+        - uid
+        - item_id
+        - event_type ∈ {"listen", "like", "dislike"}
+        - played_ratio_pct
+        - timestamp (unix time в секундах)
+
+    В items_meta как минимум:
+        - item_id
+        - artist_id
+        - album_id
+    """
+
+    ldf = _as_lazy(train_df)
+    items_meta_lf = _as_lazy(items_meta)
 
     # максимальный timestamp в датасете
     max_ts = ldf.select(pl.col("timestamp").max()).collect().item()
@@ -47,19 +75,19 @@ def build_item_user_profile(train_df, items_meta):
     # 4) Full join по uid, item_id
     merged = (
         train_df_implicit
-            .join(train_df_dislike, on=["uid", "item_id"], how="full", coalesce=True)
-            .join(train_df_like,    on=["uid", "item_id"], how="full", coalesce=True)
-            .with_columns([
-                pl.col("dislike_flag").fill_null(0),
-                pl.col("like_flag").fill_null(0),
-            ])
+        .join(train_df_dislike, on=["uid", "item_id"], how="full", coalesce=True)
+        .join(train_df_like,    on=["uid", "item_id"], how="full", coalesce=True)
+        .with_columns([
+            pl.col("dislike_flag").fill_null(0),
+            pl.col("like_flag").fill_null(0),
+        ])
     )
 
     # 5) Добавляем "дней с последнего прослушивания"
     result = (
         merged
         .with_columns([
-            ((pl.lit(max_ts) - pl.col("last_listen_ts")) / 86400)
+            ((pl.lit(max_ts) - pl.col("last_listen_ts")) / DAY_SECONDS)
             .alias("ui_days_since_last_play")
         ])
         # если у пары user–item не было прослушиваний (только лайки/дизлайки), last_listen_ts = null
@@ -68,43 +96,43 @@ def build_item_user_profile(train_df, items_meta):
         ])
     )
 
-
+    # Присоединяем artist_id / album_id один раз
     result = result.join(
-        items_meta.select(["item_id", "artist_id", "album_id"]),
+        items_meta_lf.select(["item_id", "artist_id", "album_id"]),
         on="item_id",
-        how="left"
+        how="left",
     )
-    
+
     # Для artist_listen_count
     artist_counts = (
-        result.group_by(["uid", "artist_id"])
+        result
+        .group_by(["uid", "artist_id"])
         .agg(pl.col("listen_count").sum().alias("artist_listen_count"))
     )
-    
+
     # Для album_listen_count
     album_counts = (
-        result.group_by(["uid", "album_id"])
+        result
+        .group_by(["uid", "album_id"])
         .agg(pl.col("listen_count").sum().alias("album_listen_count"))
     )
+
     # Объединяем обратно к основному датафрейму
     result = result.join(artist_counts, on=["uid", "artist_id"], how="left")
     result = result.join(album_counts, on=["uid", "album_id"], how="left")
 
-    result = result.join(
-            items_meta.select(["item_id", "artist_id", "album_id"]),
-            on="item_id",
-            how="left"
-        )
-    
-
     return result
 
+
+# ======================================================================
+#   ITEM TIME PROFILE
+# ======================================================================
 
 def build_item_time_profile(
     df: pl.LazyFrame | pl.DataFrame,
     item_col: str = "item_id",
     ts_col: str = "timestamp",
-) -> pl.DataFrame:
+) -> pl.LazyFrame:
     """
     Строит временной профиль трека (item’а).
 
@@ -124,7 +152,7 @@ def build_item_time_profile(
         - ts_col      (по умолчанию "timestamp") — unix time в секундах
     """
 
-    ldf = df.lazy() if isinstance(df, pl.DataFrame) else df
+    ldf = _as_lazy(df)
 
     # Добавляем datetime, час и день недели
     ldf_with_time = (
@@ -193,12 +221,16 @@ def build_item_time_profile(
 
     return item_time_profile
 
-    
+
+# ======================================================================
+#   USER TIME PROFILE
+# ======================================================================
+
 def build_user_time_profile(
     df: pl.LazyFrame | pl.DataFrame,
     uid_col: str = "uid",
     ts_col: str = "timestamp",
-) -> pl.DataFrame:
+) -> pl.LazyFrame:
     """
     Строит временной профиль пользователя.
 
@@ -210,7 +242,7 @@ def build_user_time_profile(
     - night_share                  — доля прослушиваний ночью      (00–05)
     - weekday_share                — доля прослушиваний в будни    (пн–пт)
     - weekend_share                — доля прослушиваний в выходные (сб–вс)
-    - avg_listen_hour              — средний час прослушивания (0–23; грубый "центр массы")
+    - avg_listen_hour              — средний час прослушивания (0–23)
     - avg_listen_weekday           — средний день недели (0=понедельник, ..., 6=воскресенье)
 
     Ожидает как минимум колонки:
@@ -218,8 +250,7 @@ def build_user_time_profile(
         - ts_col       (по умолчанию "timestamp") — unix time в секундах
     """
 
-    # Переводим timestamp в datetime, считаем час и день недели
-    ldf = df.lazy() if isinstance(df, pl.DataFrame) else df
+    ldf = _as_lazy(df)
 
     ldf_with_time = (
         ldf.with_columns(
@@ -234,27 +265,22 @@ def build_user_time_profile(
     # Режимы времени суток + будни/выходные
     ldf_flags = (
         ldf_with_time.with_columns([
-            # Утро: 06–11
             pl.when(pl.col("hour").is_between(6, 11))
               .then(1).otherwise(0)
               .alias("is_morning"),
 
-            # День: 12–17
             pl.when(pl.col("hour").is_between(12, 17))
               .then(1).otherwise(0)
               .alias("is_day"),
 
-            # Вечер: 18–23
             pl.when(pl.col("hour").is_between(18, 23))
               .then(1).otherwise(0)
               .alias("is_evening"),
 
-            # Ночь: 00–05
             pl.when(pl.col("hour").is_between(0, 5))
               .then(1).otherwise(0)
               .alias("is_night"),
 
-            # Будни (0–4) и выходные (5–6)
             pl.when(pl.col("weekday") < 5)
               .then(1).otherwise(0)
               .alias("is_weekday"),
@@ -270,10 +296,8 @@ def build_user_time_profile(
         ldf_flags
         .group_by(uid_col)
         .agg([
-            # Общее число логов (для контроля качества фичей)
             pl.len().alias("user_plays_for_time_profile"),
 
-            # Доли — это просто mean по бинарным индикаторам
             pl.mean("is_morning").alias("morning_share"),
             pl.mean("is_day").alias("day_share"),
             pl.mean("is_evening").alias("evening_share"),
@@ -281,7 +305,6 @@ def build_user_time_profile(
             pl.mean("is_weekday").alias("weekday_share"),
             pl.mean("is_weekend").alias("weekend_share"),
 
-            # Грубые «центры масс» по времени
             pl.col("hour").mean().alias("avg_listen_hour"),
             pl.col("weekday").mean().alias("avg_listen_weekday"),
         ])
@@ -289,19 +312,27 @@ def build_user_time_profile(
 
     return user_time_profile
 
-    
-def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid") -> pl.DataFrame:
+
+# ======================================================================
+#   USER MUSIC STATS
+# ======================================================================
+
+def user_music_stats(
+    df: pl.LazyFrame | pl.DataFrame,
+) -> pl.LazyFrame:
     """
     Рассчитывает для каждого пользователя:
-    - общее количество прослушиваний
-    - количество активных дней
-    - количество уникальных треков
-    - среднее количество прослушиваний в день (медианное по дням)
-    - долю уникальных треков от всех прослушиваний
-    - дни с момента последнего прослушивания
+    - user_total_plays        — общее количество прослушиваний
+    - user_active_days        — количество активных дней
+    - user_unique_tracks      — количество уникальных треков
+    - median_daily_plays      — медианное количество прослушиваний в день
+    - unique_tracks_share     — доля уникальных треков от всех прослушиваний
+    - days_since_last_play    — дни с момента последнего прослушивания
+    + user_lifetime_days, user_lifetime_days_safe
+    + временной профиль пользователя (join build_user_time_profile)
     """
 
-    ldf = df.lazy() if isinstance(df, pl.DataFrame) else df
+    ldf = _as_lazy(df)
 
     # Нормализуем дату
     ldf = ldf.with_columns(
@@ -309,7 +340,11 @@ def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid")
     )
 
     # Последний таймстамп из всего датасета
-    max_ts = ldf.select(pl.col("timestamp").max().alias("max_ts")).collect()["max_ts"][0]
+    max_ts = (
+        ldf.select(pl.col("timestamp").max().alias("max_ts"))
+        .collect()
+        .item()
+    )
 
     # Считаем количество прослушиваний в каждый день по пользователям
     plays_per_day = (
@@ -334,6 +369,7 @@ def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid")
            ])
     )
 
+    # Жизненный цикл пользователя (lifetime)
     user_lifetime = (
         ldf.group_by("uid")
            .agg([
@@ -341,7 +377,8 @@ def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid")
                pl.col("timestamp").max().alias("last_ts"),
            ])
            .with_columns([
-               ((pl.lit(max_ts) - pl.col("first_ts")) / 86400).alias("user_lifetime_days")
+               ((pl.lit(max_ts) - pl.col("first_ts")) / DAY_SECONDS)
+               .alias("user_lifetime_days")
            ])
            .with_columns([
                pl.when(pl.col("user_lifetime_days") == 0)
@@ -351,13 +388,14 @@ def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid")
            ])
     )
 
-    # Рассчитываем дополнительные колонки и объединяем результаты
+    # Основные фичи по пользователю
     result = (
         user_stats.join(median_daily_plays, on="uid")
                   .with_columns([
-                      # (pl.col("user_total_plays") / pl.col("user_active_days")).alias("mean_plays_per_day"),
-                      (pl.col("user_unique_tracks") / pl.col("user_total_plays")).alias("unique_tracks_share"),
-                      ((pl.lit(max_ts) - pl.col("last_timestamp")) / (60 * 60 * 24)).alias("days_since_last_play"),
+                      (pl.col("user_unique_tracks") / pl.col("user_total_plays"))
+                      .alias("unique_tracks_share"),
+                      ((pl.lit(max_ts) - pl.col("last_timestamp")) / DAY_SECONDS)
+                      .alias("days_since_last_play"),
                   ])
                   .select([
                       "uid",
@@ -365,45 +403,49 @@ def user_music_stats(df: pl.LazyFrame | pl.DataFrame, group: str | None = "uid")
                       "user_active_days",
                       "user_unique_tracks",
                       "median_daily_plays",
-                      # "mean_plays_per_day",
                       "unique_tracks_share",
-                      "days_since_last_play"
+                      "days_since_last_play",
                   ])
-                  
     )
+
     result = result.join(user_lifetime, on="uid")
 
-    result = result.join(build_user_time_profile(df), on="uid") 
-    
+    # Добавляем временной профиль
+    result = result.join(build_user_time_profile(df), on="uid")
+
     return result
 
 
+# ======================================================================
+#   ITEM STATS
+# ======================================================================
 
-def build_item_stats(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
+def build_item_stats(df: pl.LazyFrame | pl.DataFrame) -> pl.LazyFrame:
     """
     Считает фичи популярности треков:
         item_total_plays
         item_unique_users
-        item_plays_last_5d
-        item_plays_last_30d
-        item_trend = plays_5d / plays_30d
-        item_recent_popularity = plays_7d
+        item_plays_last_5d      — популярность за последние 5 дней
+        item_plays_last_30d     — популярность за последние 30 дней
+        item_trend              — item_plays_last_5d / item_plays_last_30d
+        item_recent_popularity  — = item_plays_last_5d
         track_length_seconds
+        item_age_days
 
     df должен содержать колонки:
         ['uid', 'item_id', 'timestamp', 'track_length_seconds']
-
-    Параметр:
-        max_ts — максимальный timestamp в датасете (например, df["timestamp"].max())
     """
-   
-    
-    ldf = df.lazy() if isinstance(df, pl.DataFrame) else df
-    max_ts = ldf.select(pl.col("timestamp").max().alias("max_ts")).collect()["max_ts"][0]
 
-        # интервалы
-    SEVEN_DAYS  = 5  * 24 * 3600
-    THIRTY_DAYS = 30 * 24 * 3600
+    ldf = _as_lazy(df)
+
+    max_ts = (
+        ldf.select(pl.col("timestamp").max().alias("max_ts"))
+        .collect()
+        .item()
+    )
+
+    FIVE_DAYS_SECONDS = 5 * DAY_SECONDS
+    THIRTY_DAYS_SECONDS = 30 * DAY_SECONDS
 
     item_stats = (
         ldf.with_columns([
@@ -416,81 +458,35 @@ def build_item_stats(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
             pl.col("uid").n_unique().alias("item_unique_users"),
             pl.col("track_length_seconds").max().alias("track_length_seconds"),
 
-            # дни от первого появления → вычислим min(timestamp)
+            # первый timestamp
             pl.col("timestamp").min().alias("first_ts"),
 
-            
-            # популярность за 7/30 дней
-            pl.when(pl.col("age_sec") <= SEVEN_DAYS)
+            # популярность за 5/30 дней
+            pl.when(pl.col("age_sec") <= FIVE_DAYS_SECONDS)
               .then(1).otherwise(0)
               .sum()
               .alias("item_plays_last_5d"),
 
-            pl.when(pl.col("age_sec") <= THIRTY_DAYS)
+            pl.when(pl.col("age_sec") <= THIRTY_DAYS_SECONDS)
               .then(1).otherwise(0)
               .sum()
               .alias("item_plays_last_30d"),
         ])
         .with_columns([
             # возраст трека в днях
-            ((max_ts - pl.col("first_ts")) / 86400).alias("item_age_days"),
+            ((max_ts - pl.col("first_ts")) / DAY_SECONDS).alias("item_age_days"),
 
             # тренд (с защитой от деления на 0)
-            (pl.col("item_plays_last_5d") 
-             / pl.col("item_plays_last_30d").clip(lower_bound=1)
+            (
+                pl.col("item_plays_last_5d")
+                / pl.col("item_plays_last_30d").clip(lower_bound=1)
             ).alias("item_trend"),
 
-            # недавняя популярность = plays_7d
+            # недавняя популярность = plays_5d
             pl.col("item_plays_last_5d").alias("item_recent_popularity"),
         ])
     )
 
-    item_stats = item_stats.join(build_item_time_profile(df), on="item_id") 
+    item_stats = item_stats.join(build_item_time_profile(df), on="item_id")
 
     return item_stats
-
-
-class FeaturesExtractor:
-    def __init__(self):
-        self.params = ParamsProvider().get_params()
-        self.user_id_column =  self.params.base.column_names.user_id
-        self.item_id_column =  self.params.base.column_names.item_id
-        
-
-    def get_features(self, train_df, items_meta):
-        
-        self.item_features =  (
-                            build_item_stats(train_df )
-                            .select([ self.item_id_column ] + self.params.HybridModel.item_features )
-                            .collect()
-                            .to_pandas()
-        )
-            
-        self.user_features =  (
-                            user_music_stats(train_df )
-                            .select([self.user_id_column] + self.params.HybridModel.user_features)
-                            .collect()
-                            .to_pandas()
-        )
-        
-
-        self.item_user_features =  (
-                            build_item_user_profile(train_df, items_meta )
-                            .select([self.user_id_column , self.item_id_column ,] + self.params.HybridModel.item_user_features)
-                            .collect()
-                            .to_pandas()
-        )
-        
-
-        self.item_features.set_index(self.item_id_column , inplace=True)
-        self.user_features.set_index(self.user_id_column , inplace=True)
-        self.item_user_features.set_index([self.user_id_column , self.item_id_column], inplace=True)
-        
-
-        features = self.item_user_features
-
-        features = features.join(self.item_features, on=[self.item_id_column], how="left")
-        features = features.join(self.user_features, on=[self.user_id_column], how="left")
-
-        return features
-

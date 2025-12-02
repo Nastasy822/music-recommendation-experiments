@@ -11,19 +11,48 @@ base:
     listen_count: "listen_count"
   
   max_predicts_count: 2000
+  weights_dir: weights
+
+
+preprocessing:
+  gap_size: 30 # min
+  test_size: 1 # days
+  batch_size: 10000000 # 10_000_000
+
+
+datasets:
+  datasets_dir: data
+  train:
+    source: "data/train_df.parquet"
+    preprocessed: data/train_df_preprocessed.parquet
+    candidates: data/train_candidates.parquet
+    likes:  "data/train_df_likes.parquet"
+    listen: "data/train_df_listen.parquet"
+  test:
+    source: "data/test_df.parquet"
+    preprocessed: data/test_df_preprocessed.parquet
+    candidates: data/test_candidates.parquet
+    likes: "data/test_df_likes.parquet"
+    listen: "data/test_df_listen.parquet"
+
+  features: data/item_user_features.parquet
+  items_meta: "data/source/items_meta.parquet"  
+  filtered_embeddings: "data/source/filtered_embeddings.parquet"
+  source_dataset_path: "data/source/multi_event.parquet"
+
 
 
 # set paths for save/load
 retrieval_models:
-  # MostPopular: "weights/MostPopular.pkl" 
-  # NewItemsLastNDays: "weights/NewItemsLastNDays.pkl" 
-  # LastListenRecommender: "weights/LastListenRecommender.pkl" 
-  # ALS: "weights/ALS.pkl" 
+  MostPopular: "weights/MostPopular.pkl" 
+  NewItemsLastNDays: "weights/NewItemsLastNDays.pkl" 
+  LastListenRecommender: "weights/LastListenRecommender.pkl" 
+  ALS: "weights/ALS.pkl" 
   # BM25: "weights/BM25.pkl" 
-  # ItemKNN: "weights/ItemKNN.pkl" 
+  ItemKNN: "weights/ItemKNN.pkl" 
   # BPR: "weights/BPR.pkl" 
   RandomWalkWithRestart: "weights/RandomWalkWithRestart.pkl" 
-  # KMeansEmbedding: "weights/KMeansEmbedding.pkl" 
+  KMeansEmbedding: "weights/KMeansEmbedding.pkl" 
 
 
 # set num of candidats per model
@@ -105,13 +134,14 @@ KMeansEmbedding:
 
      
 HybridModel:
-  iterations: 5000 
+  iterations: 50 
   learning_rate: 0.01
   depth: 6
   loss_function: "YetiRank"
   verbose: 100
   task_type: "GPU"
   test_size: 0.2
+  
   item_features:
     - "item_plays_last_5d"	
     - "item_plays_last_30d"	

@@ -76,5 +76,4 @@ class SphericalMeanShift:
 
         centers = np.vstack(centers) if centers else np.zeros((0, n_features))
 
-        # return labels, centers, modes
         return labels, centers

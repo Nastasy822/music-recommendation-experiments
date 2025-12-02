@@ -9,15 +9,17 @@ from models.initialize_model import initialize_model
 from models.base_model import load_model
 
 class RetrievalModelsTesting(BaseStage):
+    
     def __init__(self):
         super().__init__()
 
         self.params = ParamsProvider().get_params()
         self.models = self.params.retrieval_models
+        self.test_data_path = self.params.datasets.test.preprocessed
   
     def run(self):
         
-        test_df  = pl.scan_parquet("data/test_df_preprocessed_for_eval.parquet") 
+        test_df  = pl.scan_parquet(self.test_data_path) 
 
         for model_name, model_path in self.models.items():
             print(model_name)

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from helpers.params_provider import ParamsProvider
 import pickle
+import os 
 
 class BaseModel(ABC):
 
@@ -29,6 +30,10 @@ class BaseModel(ABC):
         pass
 
     def save(self, filepath):
+
+        if not os.path.exists(self.params.base.weights_dir):
+            os.makedirs(self.params.base.weights_dir)  
+
         with open(filepath, 'wb') as f:
             pickle.dump(self, f)
 

@@ -1,6 +1,8 @@
 from helpers.params_provider import ParamsProvider
 from models.base_model import load_model
 import pandas as pd
+import polars as pl
+from tqdm import tqdm
 from typing import Dict, Any
 
 class CandidateGenerator:
@@ -9,13 +11,17 @@ class CandidateGenerator:
         self.models_names = self.params.candidate_generator
         self.user_id_column =  self.params.base.column_names.user_id
         self.item_id_column =  self.params.base.column_names.item_id
+            
+        self.train_data_path = self.params.datasets.train.preprocessed
+        self.test_data_path = self.params.datasets.test.preprocessed
+
 
         self.models = {}
 
         for model_name, count in self.models_names.items():
             if count > 0:
                 try:
-                    model = load_model(f"weights/{model_name}.pkl")
+                    model = load_model(self.params.retrieval_models[model_name])
                     self.models[model_name] = {
                         "model": model,
                         "limit": count
@@ -56,3 +62,27 @@ class CandidateGenerator:
         features = self.make_features(user_id, candidates)
 
         return pd.DataFrame(features)
+
+    def run(self):
+        
+        for filename in [self.train_data_path , self.test_data_path]:
+            
+            
+            users = (
+                    pl.scan_parquet(filename)
+                    .select(self.user_id_column)
+                    .unique()
+                    # .filter(pl.col("uid")<10000)
+                    .collect()
+                    .to_series()
+                    .to_list()
+            )
+
+            dataset = pd.DataFrame()
+            for user_id in tqdm(users):
+                candidates_df =  self.recommend(user_id)
+                dataset = pd.concat([dataset, candidates_df])
+
+            sample_name = filename.split("/")[-1].split("_")[0]
+
+            dataset.to_parquet(self.params.datasets[sample_name].candidates)

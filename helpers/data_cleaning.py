@@ -59,15 +59,11 @@ def rename_events(lf: pl.LazyFrame) -> pl.LazyFrame:
     return lf.with_columns(pl.col("event_type").replace(EVENT_MAP))
 
 
-def remove_listened_data(lf):
-    lf = (
+def select_listened_data(lf):
+    return (
         lf
         .filter(
             (pl.col("event_type") == "like") |
             (pl.col("played_ratio_pct") >= 50)
         )
-        .group_by("uid")
-        .agg(pl.col("item_id").alias("items"))
     )
-
-    return lf
