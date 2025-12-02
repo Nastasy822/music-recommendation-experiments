@@ -103,6 +103,7 @@
 
 ## 📥 Работа с данными 
 
+```mermaid
 flowchart LR
 
     %% === Исходные данные ===
@@ -139,6 +140,8 @@ flowchart LR
     class SPLIT split;
     class TRAIN_CLN,TEST_CLN clean;
     class PRE_TRAIN,PRE_TEST result;
+
+```
 
 
 
