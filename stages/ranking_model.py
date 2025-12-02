@@ -28,6 +28,6 @@ class Ranking(BaseStage):
         hybrid = HybridModel()
         hybrid.fit(train_df)
 
-        model.save(model_path)
+        hybrid.save()
 
         evaluate_model(hybrid, test_df , 10)
