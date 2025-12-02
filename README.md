@@ -14,6 +14,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/python-3.11-blue?logo=python" />
+  <img src="https://img.shields.io/badge/docker-supported-0db7ed?logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/polars-1.35.2-0099ff" />
   <img src="https://img.shields.io/badge/faiss--cpu-1.13.0-34495e" />
   <img src="https://img.shields.io/badge/dvc-3.64.0-945dd6?logo=dvc" />
