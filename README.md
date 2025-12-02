@@ -103,7 +103,6 @@
 
 ## 📥 Работа с данными 
 
-```mermaid
 flowchart LR
 
     %% === Исходные данные ===
@@ -115,31 +114,20 @@ flowchart LR
     %% === Cleaning блок ===
     subgraph CLEANING["Cleaning Pipeline"]
         direction TB
-
-        %% === Train Cleaning ===
-        subgraph TRAIN_CLN["Train Cleaning"]
-            direction TB
-            N1["1. Удаление дубликатов<br/>2. Удаление редких песен и пользователей<br/>3. Удаление коротких/длинных треков<br/>4. Обработка последовательностей like/dislike"]
-
-        end
-
-        %% === Test Cleaning ===
-        subgraph TEST_CLN["Test Cleaning"]
-            direction TB
-            T1["Обработка последовательностей like/dislike"]
-        end
+        TRAIN_CLN["Train Cleaning"]
+        TEST_CLN["Test Cleaning"]
     end
 
-    PRE_TRAIN["Preprocessed Train Data"]
-    PRE_TEST["Preprocessed Test Data"]
+    PRE_TRAIN["Train Data (clean)"]
+    PRE_TEST["Test Data (clean)"]
 
     %% === Потоки ===
     SRC --> SPLIT
-    SPLIT -->|train| N1
-    SPLIT -->|test| T1
+    SPLIT -->|train| TRAIN_CLN
+    SPLIT -->|test| TEST_CLN
 
-    N1 --> PRE_TRAIN
-    T1 --> PRE_TEST
+    TRAIN_CLN --> PRE_TRAIN
+    TEST_CLN --> PRE_TEST
 
     %% === Стили ===
     classDef source fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
@@ -151,8 +139,6 @@ flowchart LR
     class SPLIT split;
     class TRAIN_CLN,TEST_CLN clean;
     class PRE_TRAIN,PRE_TEST result;
-
-```
 
 
 
