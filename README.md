@@ -8,6 +8,28 @@
 от подготовки данных и построения нескольких базовых моделей до обучения мета-ранжировщика, который объединяет сигналы разных алгоритмов в итоговый список рекомендаций. В планах финальная система должна быть развёрнута через API и демонстрировать, как может выглядеть прототип рекомендательного сервиса в реальных условиях.
 
 
+---
+
+## 📦 Технологический стек
+
+<p align="left">
+  <img src="https://img.shields.io/badge/python-3.11-blue?logo=python" />
+  <img src="https://img.shields.io/badge/polars-1.35.2-0099ff" />
+  <img src="https://img.shields.io/badge/faiss--cpu-1.13.0-34495e" />
+  <img src="https://img.shields.io/badge/dvc-3.64.0-945dd6?logo=dvc" />
+  <img src="https://img.shields.io/badge/pandas-1.5.3-150458?logo=pandas" />
+  <img src="https://img.shields.io/badge/numpy-1.26.4-013243?logo=numpy" />
+  <img src="https://img.shields.io/badge/catboost-1.2.1-fc7303" />
+  <img src="https://img.shields.io/badge/implicit-0.7.2_(CUDA)-2ecc71" />
+  <img src="https://img.shields.io/badge/scikit--learn-1.3.2-f7931e?logo=scikitlearn" />
+  <img src="https://img.shields.io/badge/plotly-6.4.0-3f4f75?logo=plotly" />
+  <img src="https://img.shields.io/badge/matplotlib-3.10.7-11557c" />  
+  <img src="https://img.shields.io/badge/poetry-1.2.2-2c3e50?logo=poetry" />
+</p>
+
+---
+
+
 ### 🎯 Цели проекта
 
 - **Изучить основные направления рекомендательных систем**  
