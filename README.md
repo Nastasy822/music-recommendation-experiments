@@ -313,20 +313,20 @@ Collaborative Filtering (CF) — это подход к рекомендация
 
 ## Точность моделей 
 
-#### 📊 Recall@10
+#### Recall@10
 
 <img src="./img/recall.png"/>
 
-#### 📊 NDCG@10
+#### NDCG@10
 
 <img src="./img/ndcg.png" />
 
-#### 📊 Coverage@10  
+#### Coverage@10  
 
 <img src="./img/coverage.png" />
 
 
-#### 📊 Cosine Similarity@10   
+#### Cosine Similarity@10   
 <img src="./img/cosine.png" />
 
 
