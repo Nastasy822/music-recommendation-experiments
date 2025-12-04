@@ -199,7 +199,7 @@ flowchart LR
 
     %% === Feature Extraction ===
     FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
-    
+
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
         RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
@@ -216,12 +216,12 @@ flowchart LR
 
 
     %% === Data Flows ===
-    PopAll --> SORTING
-    PopUser --> SORTING
+    RETRIEVAL --> SORTING
+    <!-- PopUser --> SORTING
     SIM --> SORTING
     ALS --> SORTING
     ITEMKNN --> SORTING
-    GRAPH --> SORTING
+    GRAPH --> SORTING -->
     SORTING --> RANKING
     FEATS --> RANKING
     RANKING --> POSTPROCESS
