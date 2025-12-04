@@ -26,8 +26,8 @@ class Ranking(BaseStage):
         test_df  = pl.scan_parquet(self.test_data_path) 
 
         hybrid = HybridModel()
-        hybrid.fit(train_df)
+        # hybrid.fit(train_df)
 
-        hybrid.save()
+        hybrid.load()
 
-        evaluate_model(hybrid, test_df , 10)
+        evaluate_model(hybrid, test_df, train_df)
