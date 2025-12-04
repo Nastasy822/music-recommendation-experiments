@@ -201,30 +201,41 @@ flowchart LR
         RANK["CatBoost"]
     end
 
+    %% === Postprocessing Stage ===
+    subgraph POSTPROCESS ["Postprocessing"]
+        ARTIST_FILTER["Удаление одинаковых артистов и альбомов"]
+        EXPLORATION["Exploration–Exploitation<br/>Добавление разнообразия"]
+    end
+
     %% === Feature Extraction ===
-    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile , Item–User Interaction Features"]
+    FEATS["Feature Extraction<br><br>⚙️ Track & User Features"]
 
     %% === Data Flows ===
-    PopAll --> SORTING
-    PopUser --> SORTING
-    SIM --> SORTING
-    ALS --> SORTING
-    ITEMKNN --> SORTING
-    GRAPH --> SORTING
+    PopAll --> DUBLICATE
+    PopUser --> DUBLICATE
+    SIM --> DUBLICATE
+    ALS --> DUBLICATE
+    ITEMKNN --> DUBLICATE
+    GRAPH --> DUBLICATE
 
-    SORTING --> RANKING
-    FEATS --> RANKING
+    DUBLICATE --> FILTER
+    FILTER --> RANK
+    FEATS --> RANK
+
+    RANK --> ARTIST_FILTER
+    ARTIST_FILTER --> EXPLORATION
 
     %% === Styles ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
     classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
+    classDef postprocess fill:#f0e5ff,stroke:#b07de6,color:#3d1a5c;
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
-    class FILTER sorting;
-    class DUBLICATE sorting;
+    class FILTER,DUBLICATE sorting;
     class RANK ranking;
+    class ARTIST_FILTER,EXPLORATION postprocess;
     class FEATS features;
 ```
 
