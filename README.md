@@ -199,11 +199,7 @@ flowchart LR
     
     %% === Feature Extraction ===
     subgraph FEATS ["Feature Extraction"]
-        Popularity["Track Popularity & Freshness"]
-        TrackTimeProfile["Track Time Profile"]
-        UserTimeProfile["User Time Profile"]
-        UserActivityDiversity["User Activity & Diversity"]
-        ItemUser["Item–User Interaction Features"]
+        LISTFEATURES["Track Popularity & Freshness<br/>Track Time Profile<br/>User Time Profile<br/>User Activity & Diversity<br/>Item–User Interaction Features"]
 
     end
 
@@ -245,7 +241,7 @@ flowchart LR
     class FILTER,DUBLICATE sorting;
     class RANK ranking;
     class ARTIST_FILTER,EXPLORATION postprocess;
-    class Popularity,TrackTimeProfile,UserTimeProfile,UserActivityDiversity,ItemUser features;
+    class LISTFEATURES features;
 
 
 ```
