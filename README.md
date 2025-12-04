@@ -180,29 +180,30 @@ flowchart LR
 ```mermaid
 flowchart LR
 
-    %% === Блоки пайплайна ===
+    %% === Retrieval Models ===
     subgraph RETRIEVAL ["Retrieval"]
-        PopAll["MostPopular (100 items, last 5 days)"]
-        PopUser["NewItemsLastNDays (100 items, last 5 days)"]
-        SIM["KMeansEmbedding (100 items)"]
-        ITEMKNN["ItemKNN (200 items, weights - экспоненциальное затухание по времени)"]
-        GRAPH["RandomWalkWithRestart (200 items)"]
-        ALS["ALS (200 items, weights - log(count_listen))"]
-
+        PopAll["MostPopular<br/>⚙️ 100 items, last 5 days"]
+        PopUser["NewItemsLastNDays<br/>⚙️ 100 items, last 5 days"]
+        SIM["KMeansEmbedding<br/>⚙️ 100 items"]
+        ITEMKNN["ItemKNN<br/>⚙️ 200 items<br/>weights: exp(time_decay)"]
+        GRAPH["RandomWalkWithRestart<br/>⚙️ 200 items"]
+        ALS["ALS<br/>⚙️ 200 items<br/>weights: log(count_listen)"]
     end
 
+    %% === Sorting Stage ===
     subgraph SORTING ["Sorting"]
         FILTER["Фильтрация уже просмотренных"]
     end
 
+    %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
         RANK["CatBoost"]
     end
 
-    %% === Отдельный нижний блок Feature Extraction ===
+    %% === Feature Extraction ===
     FEATS["Feature Extraction"]
 
-    %% === Потоки данных ===
+    %% === Data Flows ===
     PopAll --> FILTER
     PopUser --> FILTER
     SIM --> FILTER
@@ -213,7 +214,7 @@ flowchart LR
     FILTER --> RANK
     FEATS --> RANK
 
-    %% === Цветовые стили ===
+    %% === Styles ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
     classDef sorting fill:#fff5dd,stroke:#e6c27d,color:#5c451a;
     classDef ranking fill:#ffe6ec,stroke:#e67d9c,color:#5c1a2f;
@@ -288,8 +289,6 @@ Collaborative Filtering (CF) — это подход к рекомендация
 
 
  
-
-
 
 #### Эксперименты 
 
