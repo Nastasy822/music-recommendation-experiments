@@ -221,7 +221,7 @@ flowchart LR
     SORTING --> RANKING
     FEATS --> RANKING
 
-    RANK --> POSTPROCESS
+    RANKING --> POSTPROCESS
 
     %% === Styles ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
