@@ -192,36 +192,37 @@ flowchart LR
 
     %% === Sorting Stage ===
     subgraph SORTING ["Sorting"]
+        direction TB
         DUBLICATE["Удаление дубликатов"]
-        DUBLICATE --> FILTER["Фильтрация уже просмотренных"]
+        FILTER["Фильтрация уже просмотренных"]
     end
 
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
-        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
+        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6,  loss_function: YetiRank "]
     end
 
     %% === Postprocessing Stage ===
     subgraph POSTPROCESS ["Postprocessing"]
         ARTIST_FILTER["Diversification ⚙️artists/albums"]
-        ARTIST_FILTER --> EXPLORATION["Exploration–Exploitation<br/>⚙️ ε-greedy"]
+        EXPLORATION["Exploration–Exploitation<br/> ⚙️ e-greedy"]
     end
 
     %% === Feature Extraction ===
-    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile,<br/>User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
+    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity,  User Time Profile, Item–User Interaction Features"]
 
     %% === Data Flows ===
-    PopAll --> DUBLICATE
-    PopUser --> DUBLICATE
-    SIM --> DUBLICATE
-    ALS --> DUBLICATE
-    ITEMKNN --> DUBLICATE
-    GRAPH --> DUBLICATE
+    PopAll --> SORTING
+    PopUser --> SORTING
+    SIM --> SORTING
+    ALS --> SORTING
+    ITEMKNN --> SORTING
+    GRAPH --> SORTING
 
-    FILTER --> RANK
-    FEATS --> RANK
+    SORTING --> RANKING
+    FEATS --> RANKING
 
-    RANK --> ARTIST_FILTER
+    RANKING --> POSTPROCESS
 
     %% === Styles ===
     classDef retrieval fill:#e8f4ff,stroke:#7db4e6,color:#1a3d5c;
@@ -231,11 +232,10 @@ flowchart LR
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
-    class DUBLICATE,FILTER sorting;
+    class FILTER,DUBLICATE sorting;
     class RANK ranking;
     class ARTIST_FILTER,EXPLORATION postprocess;
     class FEATS features;
-
 ```
 
 
