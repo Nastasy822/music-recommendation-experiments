@@ -192,7 +192,7 @@ flowchart LR
 
     %% === Sorting Stage ===
     subgraph SORTING ["Sorting"]
-        DUBLICATE["Удаление дубликатов]
+        DUBLICATE["Удаление дубликатов"]
         FILTER["Фильтрация уже просмотренных"]
     end
 
