@@ -245,7 +245,7 @@ flowchart LR
     class FILTER,DUBLICATE sorting;
     class RANK ranking;
     class ARTIST_FILTER,EXPLORATION postprocess;
-    class Popularity,TrackTimeProfile, UserTimeProfile, UserActivityDiversity,ItemUser features;
+    class Popularity,TrackTimeProfile,UserTimeProfile,UserActivityDiversity,ItemUser features;
 
 
 ```
