@@ -194,6 +194,7 @@ flowchart LR
         direction TB
         DUBLICATE["Удаление дубликатов"]
         FILTER["Фильтрация уже просмотренных"]
+        DUBLICATE --> FILTER
     end
 
     %% === Ranking Stage ===
@@ -206,6 +207,7 @@ flowchart LR
         direction TB
         ARTIST_FILTER["Diversification ⚙️artists/albums"]
         EXPLORATION["Exploration–Exploitation<br/> ⚙️ e-greedy"]
+        ARTIST_FILTER --> EXPLORATION
     end
 
     %% === Feature Extraction ===
