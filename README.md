@@ -204,12 +204,12 @@ flowchart LR
     FEATS["Feature Extraction<br> Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile , Item–User Interaction Features"]
 
     %% === Data Flows ===
-    PopAll --> FILTER
-    PopUser --> FILTER
-    SIM --> FILTER
-    ALS --> FILTER
-    ITEMKNN --> FILTER
-    GRAPH --> FILTER
+    PopAll --> SORTING
+    PopUser --> SORTING
+    SIM --> SORTING
+    ALS --> SORTING
+    ITEMKNN --> SORTING
+    GRAPH --> SORTING
 
     FILTER --> RANK
     FEATS --> RANK
