@@ -14,7 +14,7 @@ from models.utils import create_target_last_day
 
 from helpers.candidate_filtration import CandidatesFiltration
 from helpers.diversification import DiversificationByArtistAlbum
-
+from helpers.e_greedy_top_k import EGreedyTopK
 
 
 class HybridModel:
@@ -62,6 +62,8 @@ class HybridModel:
 
         
         self.filter_candidates = self.params.HybridModel.filter_candidates
+        self.use_diversifier = self.params.HybridModel.use_diversifier
+        self.use_e_greedy = self.params.HybridModel.use_e_greedy
         
         self.candidates_filtration = CandidatesFiltration()
 
@@ -76,7 +78,12 @@ class HybridModel:
                 max_per_album=1,
             )
 
-        self.use_diversifier = self.params.HybridModel.use_diversifier
+
+        self.eg = EGreedyTopK(
+                k=10, 
+                exploration_rate=0.2, 
+                score_col="score", 
+                random_state=42)
 
 
 
@@ -180,5 +187,8 @@ class HybridModel:
         if self.use_diversifier:
             candidates_df = self.diversifier.diversify(candidates_df)
 
+        if self.use_e_greedy:
+            candidates_df = self.eg.apply(candidates_df)
+        
 
         return candidates_df[self.item_id_column ].tolist(), candidates_df["score"].tolist()
