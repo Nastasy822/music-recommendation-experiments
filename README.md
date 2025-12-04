@@ -194,6 +194,7 @@ flowchart LR
         direction TB
         DUBLICATE["Удаление дубликатов"]
         FILTER["Фильтрация уже просмотренных"]
+        DUBLICATE --> FILTER
     end
 
     %% === Ranking Stage ===
