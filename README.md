@@ -197,9 +197,6 @@ flowchart LR
         DUBLICATE --> FILTER
     end
 
-    %% === Feature Extraction ===
-    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
-    
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
         RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
@@ -213,7 +210,8 @@ flowchart LR
         ARTIST_FILTER --> EXPLORATION
     end
 
-
+    %% === Feature Extraction ===
+    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
 
     %% === Data Flows ===
     PopAll --> SORTING
@@ -222,9 +220,8 @@ flowchart LR
     ALS --> SORTING
     ITEMKNN --> SORTING
     GRAPH --> SORTING
-
-    SORTING --> FEATS
-    FEATS --> RANK
+    SORTING --> RANKING
+    FEATS --> RANKING
     RANKING --> POSTPROCESS
 
     %% === Styles ===
