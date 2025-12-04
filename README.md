@@ -323,11 +323,11 @@ Collaborative Filtering (CF) — это подход к рекомендация
 
 #### 📊 Coverage@10  
 
-<img src="./img/Coverage.png" />
+<img src="./img/coverage.png" />
 
 
 #### 📊 Cosine Similarity@10   
-<img src="./img/Cosine.png" />
+<img src="./img/cosine.png" />
 
 
 
