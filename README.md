@@ -182,12 +182,12 @@ flowchart LR
 
     %% === Блоки пайплайна ===
     subgraph RETRIEVAL ["Retrieval"]
-        PopAll["MostPopular (last 5 days, 100 items)"]
-        PopUser["NewItemsLastNDays (last 5 days, 100 items)"]
+        PopAll["MostPopular (100 items, last 5 days)"]
+        PopUser["NewItemsLastNDays (100 items, last 5 days)"]
         SIM["KMeansEmbedding (100 items)"]
-        ITEMKNN["ItemKNN (200 items)"]
+        ITEMKNN["ItemKNN (200 items, weights - экспоненциальное затухание по времени)"]
         GRAPH["RandomWalkWithRestart (200 items)"]
-        ALS["ALS (200 items)"]
+        ALS["ALS (200 items, weights - log(count_listen))"]
 
     end
 
