@@ -179,8 +179,10 @@ flowchart LR
 
 ```mermaid
 flowchart LR
+
     %% === Retrieval Models ===
-    subgraph RETRIEVAL ["Retrieval"]
+    subgraph RETRIEVAL ["Retrieval 🔍"]
+        direction TB
         PopAll["MostPopular<br/>⚙️ 100 items, last 5 days"]
         PopUser["NewItemsLastNDays<br/>⚙️ 100 items, last 5 days"]
         SIM["KMeansEmbedding<br/>⚙️ 100 items"]
@@ -189,8 +191,11 @@ flowchart LR
         ALS["ALS<br/>⚙️ 200 items<br/>weights: log(count_listen)"]
     end
 
+    %% Узел-слияние, чтобы не вести много стрелок в Sorting
+    RETR_OUT(( ))
+
     %% === Sorting Stage ===
-    subgraph SORTING ["Sorting"]
+    subgraph SORTING ["Sorting 🧹"]
         direction TB
         DUBLICATE["Удаление дубликатов"]
         FILTER["Фильтрация уже просмотренных"]
@@ -198,34 +203,32 @@ flowchart LR
     end
     
     %% === Feature Extraction ===
-    subgraph FEATS ["Feature Extraction"]
+    subgraph FEATS ["Feature Extraction 🧠"]
         LISTFEATURES["Track Popularity & Freshness<br/>Track Time Profile<br/>User Time Profile<br/>User Activity & Diversity<br/>Item–User Interaction Features"]
-
     end
 
-
     %% === Ranking Stage ===
-    subgraph RANKING ["Ranking"]
-        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
+    subgraph RANKING ["Ranking 🎯"]
+        RANK["CatBoostRanker<br/>⚙️ 5000 iters, lr=0.01, depth=6,<br/>loss_function=YetiRank"]
     end
 
     %% === Postprocessing Stage ===
-    subgraph POSTPROCESS ["Postprocessing"]
+    subgraph POSTPROCESS ["Postprocessing 🎛"]
         direction TB
-        ARTIST_FILTER["Diversification ⚙️artists/albums"]
-        EXPLORATION["Exploration–Exploitation<br/> ⚙️ e-greedy"]
+        ARTIST_FILTER["Diversification<br/>⚙️ artists / albums"]
+        EXPLORATION["Exploration–Exploitation<br/>⚙️ e-greedy"]
         ARTIST_FILTER --> EXPLORATION
     end
 
-
-
     %% === Data Flows ===
-    PopAll --> SORTING
-    PopUser --> SORTING
-    SIM --> SORTING
-    ALS --> SORTING
-    ITEMKNN --> SORTING
-    GRAPH --> SORTING
+    PopAll --> RETR_OUT
+    PopUser --> RETR_OUT
+    SIM --> RETR_OUT
+    ALS --> RETR_OUT
+    ITEMKNN --> RETR_OUT
+    GRAPH --> RETR_OUT
+
+    RETR_OUT --> SORTING
     SORTING --> RANKING
     FEATS --> RANKING
     RANKING --> POSTPROCESS
