@@ -201,7 +201,7 @@ flowchart LR
     end
 
     %% === Feature Extraction ===
-    FEATS["Feature Extraction"]
+    FEATS["Feature Extraction<br> Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile , Item–User Interaction Features"]
 
     %% === Data Flows ===
     PopAll --> FILTER
@@ -288,7 +288,6 @@ Collaborative Filtering (CF) — это подход к рекомендация
 | Item–User Interaction Features | `ui_days_since_last_play`, `artist_listen_count`, `album_listen_count` |
 
 
- 
 
 #### Эксперименты 
 
