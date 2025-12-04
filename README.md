@@ -196,10 +196,18 @@ flowchart LR
         FILTER["Фильтрация уже просмотренных"]
         DUBLICATE --> FILTER
     end
-
-    %% === Feature Extraction ===
-    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
     
+    %% === Feature Extraction ===
+    subgraph FEATS ["Feature Extraction"]
+        Popularity["Track Popularity & Freshness"]
+        TrackTimeProfile["Track Time Profile"]
+        UserTimeProfile["User Time Profile"]
+        UserActivityDiversity["User Activity & Diversity"]
+        ItemUser["Item–User Interaction Features"]
+
+    end
+
+
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
         RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
