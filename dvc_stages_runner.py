@@ -7,6 +7,8 @@ from stages.retrieval_models_testing import RetrievalModelsTesting
 from stages.ranking_model import Ranking
 from stages.features_extractor import FeaturesExtractor
 from stages.candidate_generator import CandidateGenerator
+from stages.embeddings_index_creater import EmbeddingIndexCreater
+
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser()
@@ -15,6 +17,7 @@ if __name__ == '__main__':
 
     stage_dict = {
         'data_preprocessing': DataPreprocessing,
+        'embeddings_index_creater': EmbeddingIndexCreater,
         'retrieval_models_training': RetrievalModelsTraining,
         'retrieval_models_testing': RetrievalModelsTesting,
         'features_extractor': FeaturesExtractor,

@@ -40,6 +40,8 @@ datasets:
   filtered_embeddings: "data/source/filtered_embeddings.parquet"
   source_dataset_path: "data/source/multi_event.parquet"
   source_embeddings: "data/source/embeddings.parquet"
+  embeddings_index: data/embeddings.index
+  index_item_ids_map: data/index_item_ids_map.pkl
 
 
 
@@ -47,7 +49,7 @@ datasets:
 retrieval_models:
   MostPopular: "weights/MostPopular.pkl" 
   NewItemsLastNDays: "weights/NewItemsLastNDays.pkl" 
-  LastListenRecommender: "weights/LastListenRecommender.pkl" 
+  # LastListenRecommender: "weights/LastListenRecommender.pkl" 
   ALS: "weights/ALS.pkl" 
   # BM25: "weights/BM25.pkl" 
   ItemKNN: "weights/ItemKNN.pkl" 
