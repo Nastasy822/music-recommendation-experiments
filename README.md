@@ -217,11 +217,6 @@ flowchart LR
 
     %% === Data Flows ===
     RETRIEVAL --> SORTING
-    <!-- PopUser --> SORTING
-    SIM --> SORTING
-    ALS --> SORTING
-    ITEMKNN --> SORTING
-    GRAPH --> SORTING -->
     SORTING --> RANKING
     FEATS --> RANKING
     RANKING --> POSTPROCESS
