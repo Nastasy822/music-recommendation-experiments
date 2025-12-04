@@ -220,8 +220,9 @@ flowchart LR
     ALS --> SORTING
     ITEMKNN --> SORTING
     GRAPH --> SORTING
-    SORTING --> RANKING
-    FEATS --> RANKING
+
+    SORTING --> FEATS
+    FEATS --> RANK
     RANKING --> POSTPROCESS
 
     %% === Styles ===
