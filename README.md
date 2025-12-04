@@ -278,55 +278,14 @@ Collaborative Filtering (CF) — это подход к рекомендация
 
 #### Список features
 
-## Item Features
-
-| Feature | Description |
+| Type | Features |
 |--------|-------------|
-| `item_plays_last_5d` | Number of plays in the last 5 days |
-| `item_plays_last_30d` | Number of plays in the last 30 days |
-| `item_age_days` | Age of the track in days |
-| `item_trend` | Popularity trend indicator |
-| `item_plays_for_time_profile` | Match between track popularity and time-of-day profile |
-| `item_morning_share` | Share of listens in the morning |
-| `item_day_share` | Share of listens during the day |
-| `item_evening_share` | Share of listens in the evening |
-| `item_night_share` | Share of listens at night |
-| `item_weekday_share` | Share of listens on weekdays |
-| `item_weekend_share` | Share of listens on weekends |
-| `item_avg_listen_hour` | Average listen hour |
-| `item_avg_listen_weekday` | Average listening weekday |
+| Track Popularity & Freshness | `item_plays_last_5d`, `item_plays_last_30d`, `item_age_days`, `item_trend` |
+| Track Time Profile | `item_plays_for_time_profile`, `item_morning_share`, `item_day_share`, `item_evening_share`, `item_night_share`, `item_weekday_share`, `item_weekend_share`, `item_avg_listen_hour`, `item_avg_listen_weekday` |
+| User Activity & Diversity | `user_total_plays`, `user_active_days`, `user_unique_tracks`, `median_daily_plays`, `unique_tracks_share`, `days_since_last_play` |
+| User Time Profile | `user_plays_for_time_profile`, `morning_share`, `day_share`, `evening_share`, `night_share`, `weekday_share`, `weekend_share`, `avg_listen_hour`, `avg_listen_weekday` |
+| Item–User Interaction Features | `ui_days_since_last_play`, `artist_listen_count`, `album_listen_count` |
 
----
-
-## User Features
-
-| Feature | Description |
-|---------|-------------|
-| `user_total_plays` | Total number of plays |
-| `user_active_days` | Number of active days |
-| `user_unique_tracks` | Number of unique tracks listened |
-| `median_daily_plays` | Median daily number of plays |
-| `unique_tracks_share` | Share of unique tracks |
-| `days_since_last_play` | Days since last play |
-| `user_plays_for_time_profile` | User's time-of-day listening profile |
-| `morning_share` | Morning activity share |
-| `day_share` | Daytime activity share |
-| `evening_share` | Evening activity share |
-| `night_share` | Night activity share |
-| `weekday_share` | Weekday listening share |
-| `weekend_share` | Weekend listening share |
-| `avg_listen_hour` | Average listen hour |
-| `avg_listen_weekday` | Average listening weekday |
-
----
-
-## Item–User Interaction Features
-
-| Feature | Description |
-|--------|-------------|
-| `ui_days_since_last_play` | Days since the user last played this item |
-| `artist_listen_count` | Number of times the user listened to this artist |
-| `album_listen_count` | Number of times the user listened to the album |
 
  
 
