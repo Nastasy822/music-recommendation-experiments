@@ -115,8 +115,8 @@ flowchart LR
     %% === Cleaning блок ===
     subgraph CLEANING["Cleaning Pipeline"]
         direction TB
-        TRAIN_CLN["Train Cleaning<br/><br/>1. Удаление дубликатов<br/>2. Удаление редких песен и пользователей<br/>3. Удаление коротких/длинных треков<br/>4. Обработка последовательностей like/dislike"]
-        TEST_CLN["Test Cleaning<br/><br/>Обработка последовательностей like/dislike"]
+        TRAIN_CLN["Train Cleaning<br/><br/>0. Mapping item_id одинаковых песен<br/>1. Удаление дубликатов<br/>2. Удаление редких песен и пользователей<br/>3. Удаление коротких/длинных треков<br/>4. Обработка последовательностей like/dislike"]
+        TEST_CLN["Test Cleaning<br/><br/>0. Mapping item_id одинаковых песен<br/>1. Обработка последовательностей like/dislike"]
     end
 
     PRE_TRAIN["Train Data (clean)"]
