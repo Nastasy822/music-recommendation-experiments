@@ -198,8 +198,7 @@ flowchart LR
 
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
-        RANK["CatBoostRanker <br/> ⚙️   iterations: 5000, learning_rate: 0.01, depth: 6,  loss_function: 'YetiRank' "]
-
+        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6,  loss_function: YetiRank "]
     end
 
     %% === Postprocessing Stage ===
