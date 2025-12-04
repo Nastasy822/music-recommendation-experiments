@@ -51,9 +51,9 @@ retrieval_models:
   NewItemsLastNDays: "weights/NewItemsLastNDays.pkl" 
   # LastListenRecommender: "weights/LastListenRecommender.pkl" 
   ALS: "weights/ALS.pkl" 
-  # BM25: "weights/BM25.pkl" 
+  BM25: "weights/BM25.pkl" 
   ItemKNN: "weights/ItemKNN.pkl" 
-  # BPR: "weights/BPR.pkl" 
+  BPR: "weights/BPR.pkl" 
   RandomWalkWithRestart: "weights/RandomWalkWithRestart.pkl" 
   KMeansEmbedding: "weights/KMeansEmbedding.pkl" 
 

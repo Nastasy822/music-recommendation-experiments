@@ -30,4 +30,4 @@ class Ranking(BaseStage):
 
         hybrid.load()
 
-        evaluate_model(hybrid, test_df, train_df)
+        evaluate_model(hybrid, test_df, train_df, 100)

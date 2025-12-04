@@ -27,7 +27,7 @@ class RetrievalModelsTesting(BaseStage):
             print(model_name)
             model = load_model(model_path) 
 
-            evaluate_model(model, test_df, train_df)
+            evaluate_model(model, test_df, train_df, 10)
  
             
 
