@@ -39,6 +39,7 @@ datasets:
   items_meta: "data/source/items_meta.parquet"  
   filtered_embeddings: "data/source/filtered_embeddings.parquet"
   source_dataset_path: "data/source/multi_event.parquet"
+  source_embeddings: "data/source/embeddings.parquet"
 
 
 
@@ -176,10 +177,10 @@ HybridModel:
     - "avg_listen_weekday"
                                                 
   item_user_features:
-    - "listen_count"
-    - "played_ratio_max"
-    - "dislike_flag"
-    - "like_flag"
+    # - "listen_count"
+    # - "played_ratio_max"
+    # - "dislike_flag"
+    # - "like_flag"
     - "ui_days_since_last_play"
     - "artist_listen_count"
     - "album_listen_count"
@@ -189,3 +190,4 @@ HybridModel:
     - "score_NewItemsLastNDays"
     - "score_ALS"
     - "score_ItemKNN"
+    - "score_RandomWalkWithRestart"
