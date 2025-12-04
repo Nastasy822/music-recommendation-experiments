@@ -223,6 +223,7 @@ flowchart LR
 
     class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH retrieval;
     class FILTER sorting;
+    class DUBLICATE sorting;
     class RANK ranking;
     class FEATS features;
 ```
