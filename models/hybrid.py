@@ -56,17 +56,16 @@ class HybridModel:
         )
 
     def create_dataset(self, train_df):
-        
         target_df = create_target_last_day(train_df)
         # target_df = target_df.set_index([self.user_id_column , self.item_id_column ])
-
         dataset = self.train_candidates
         # dataset = dataset.set_index([self.user_id_column , self.item_id_column ])
-
+        
         dataset = dataset.join(target_df, on=[self.user_id_column , self.item_id_column ], how="left")
         dataset = dataset.join(self.features, on=[self.user_id_column , self.item_id_column ], how="left") 
+        
         dataset = dataset.fill_nan(0)
-
+        
         # dataset = dataset.reset_index()
         return dataset
 
@@ -74,15 +73,18 @@ class HybridModel:
     def fit(self, train_df):
         
         data = self.create_dataset(train_df)
-
+        
         # удаляем кейсы, где нечего ранжировать
         data = data.filter(
                         pl.col(self.weights_column)
                         .n_unique()
                         .over(self.user_id_column) > 1
                     ).collect().to_pandas()
-
+        print(data)
+        
         data = data.fillna(0)
+        
+
 
         X_train, X_test, y_train, y_test, group_train, group_test = train_test_split(
             data[self.list_of_features],

@@ -1,6 +1,5 @@
 
 from helpers.big_data_helper import *
-from helpers.embedding_index import create_index
 from models.utils import *
 from helpers.clusterisations import SphericalMeanShift
 
@@ -10,6 +9,7 @@ from tqdm import tqdm
 import numpy as np
 import json
 from models.base_model import BaseModel
+import pickle
 
 
 class KMeansEmbedding(BaseModel):
@@ -24,11 +24,15 @@ class KMeansEmbedding(BaseModel):
         self.use_jitter = self.params.KMeansEmbedding.use_jitter
 
         self.embeddings_path = self.params.datasets.filtered_embeddings
-
+        self.embeddings_index_path = self.params.datasets.embeddings_index
+        self.index_item_ids_map_path = self.params.datasets.index_item_ids_map
 
     def fit(self, data):
 
-        self.index, self.item_ids = create_index(self.embeddings_path)
+        self.index = faiss.read_index(self.embeddings_index_path)
+
+        with open(self.index_item_ids_map_path, "rb") as f:
+            self.item_ids = pickle.load(f)
 
         self.id2pos = {iid: i for i, iid in enumerate(self.item_ids)} 
         
@@ -55,7 +59,7 @@ class KMeansEmbedding(BaseModel):
         
         if len(indices)==0:
             return None
-            
+                
         vectors = np.vstack([self.index.reconstruct(int(i)) for i in indices]).astype("float32")
         embeddings = np.array(vectors, dtype="float32")
         
