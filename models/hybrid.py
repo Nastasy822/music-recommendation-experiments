@@ -11,7 +11,12 @@ from helpers.params_provider import ParamsProvider
 from stages.base_stage import BaseStage
 from helpers.evaluate import evaluate_model
 from models.utils import create_target_last_day
-    
+
+from helpers.candidate_filtration import CandidatesFiltration
+from helpers.diversification import DiversificationByArtistAlbum
+
+
+
 class HybridModel:
     def __init__(self):
 
@@ -55,6 +60,26 @@ class HybridModel:
             .to_pandas()
         )
 
+        
+        self.filter_candidates = self.params.HybridModel.filter_candidates
+        
+        self.candidates_filtration = CandidatesFiltration()
+
+        self.train_data_path = self.params.datasets.train.preprocessed
+        train_df = pl.scan_parquet(self.train_data_path)
+
+        self.candidates_filtration.fit(train_df)
+
+        self.diversifier = DiversificationByArtistAlbum(
+                items_meta_path=self.params.datasets.items_meta,
+                max_per_artist=1,
+                max_per_album=1,
+            )
+
+        self.use_diversifier = self.params.HybridModel.use_diversifier
+
+
+
     def create_dataset(self, train_df):
         target_df = create_target_last_day(train_df)
         # target_df = target_df.set_index([self.user_id_column , self.item_id_column ])
@@ -71,7 +96,8 @@ class HybridModel:
 
 
     def fit(self, train_df):
-        
+
+    
         data = self.create_dataset(train_df)
         
         # удаляем кейсы, где нечего ранжировать
@@ -80,8 +106,7 @@ class HybridModel:
                         .n_unique()
                         .over(self.user_id_column) > 1
                     ).collect().to_pandas()
-        print(data)
-        
+
         data = data.fillna(0)
         
 
@@ -144,8 +169,16 @@ class HybridModel:
         
         candidates_df = self.test_pd[self.test_pd[self.user_id_column] == uid]
         candidates_df = candidates_df.copy()
+
+        if self.filter_candidates:
+            candidates_df = self.candidates_filtration.filter(uid, candidates_df)
+
         scores = self.hybrid_model.predict(candidates_df[self.list_of_features])
         candidates_df["score"] = scores
         candidates_df = candidates_df.sort_values("score", ascending=False)
         
+        if self.use_diversifier:
+            candidates_df = self.diversifier.diversify(candidates_df)
+
+
         return candidates_df[self.item_id_column ].tolist(), candidates_df["score"].tolist()
