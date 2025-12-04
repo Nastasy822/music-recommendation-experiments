@@ -145,6 +145,8 @@ HybridModel:
   verbose: 100
   task_type: "GPU"
   test_size: 0.2
+  filter_candidates: True
+  use_diversifier: True
   
   item_features:
     - "item_plays_last_5d"	

@@ -34,7 +34,7 @@ class CandidatesFiltration:
         self.user_recent_items = {}
         for uid, item_id in last_listens.iter_rows():
             self.user_recent_items.setdefault(uid, set()).add(item_id)
-
+    
     def filter(self, uid, candidates):
 
         banned = self.user_recent_items.get(uid, set())
