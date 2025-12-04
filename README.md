@@ -197,8 +197,8 @@ flowchart LR
     %% === Sorting Stage ===
     subgraph SORTING ["Sorting 🧹"]
         direction TB
-        DUBLICATE["Удаление дубликатов"]
-        FILTER["Фильтрация уже просмотренных"]
+        DUBLICATE["Remove duplicates"]
+        FILTER["Filter already viewed"]
         DUBLICATE --> FILTER
     end
     
@@ -248,8 +248,6 @@ flowchart LR
 
 
 ```
-
-
 
 
 ### Эвристические модели (Rule-based / Popularity-based)
