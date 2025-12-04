@@ -4,7 +4,6 @@ import logging
 from helpers.params_provider import ParamsProvider
 
 from stages.base_stage import BaseStage
-from helpers.evaluate import evaluate_model
 from models.initialize_model import initialize_model
 
 class RetrievalModelsTraining(BaseStage):
