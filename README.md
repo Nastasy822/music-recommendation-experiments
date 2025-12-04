@@ -400,7 +400,7 @@ docker --version
 
 ### Скачать данные с HuggingFace
 
-Скачайте датасет [Install Dataset](https://huggingface.co/datasets/yandex/yambda/tree/main/flat/50m) и положите их в директорию проекта:
+Скачайте датасет [Download Dataset](https://huggingface.co/datasets/yandex/yambda/tree/main/flat/50m) и положите их в директорию проекта:
 
 ```bash
 data/
