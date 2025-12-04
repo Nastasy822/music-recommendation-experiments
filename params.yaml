@@ -147,6 +147,7 @@ HybridModel:
   test_size: 0.2
   filter_candidates: True
   use_diversifier: True
+  use_e_greedy: True
   
   item_features:
     - "item_plays_last_5d"	
