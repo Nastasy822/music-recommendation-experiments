@@ -179,7 +179,6 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-
     %% === Retrieval Models ===
     subgraph RETRIEVAL ["Retrieval"]
         PopAll["MostPopular<br/>⚙️ 100 items, last 5 days"]
@@ -199,7 +198,7 @@ flowchart LR
 
     %% === Ranking Stage ===
     subgraph RANKING ["Ranking"]
-        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6,  loss_function: YetiRank "]
+        RANK["CatBoostRanker<br/>⚙️iterations: 5000, learning_rate: 0.01, depth: 6, loss_function: YetiRank"]
     end
 
     %% === Postprocessing Stage ===
@@ -209,7 +208,7 @@ flowchart LR
     end
 
     %% === Feature Extraction ===
-    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity,  User Time Profile, Item–User Interaction Features"]
+    FEATS["Feature Extraction<br><br>⚙️ Track Popularity & Freshness, Track Time Profile, User Activity & Diversity, User Time Profile, Item–User Interaction Features"]
 
     %% === Data Flows ===
     PopAll --> SORTING
@@ -218,10 +217,8 @@ flowchart LR
     ALS --> SORTING
     ITEMKNN --> SORTING
     GRAPH --> SORTING
-
     SORTING --> RANKING
     FEATS --> RANKING
-
     RANKING --> POSTPROCESS
 
     %% === Styles ===
@@ -236,6 +233,7 @@ flowchart LR
     class RANK ranking;
     class ARTIST_FILTER,EXPLORATION postprocess;
     class FEATS features;
+
 ```
 
 
