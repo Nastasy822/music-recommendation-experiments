@@ -203,8 +203,8 @@ flowchart LR
 
     %% === Postprocessing Stage ===
     subgraph POSTPROCESS ["Postprocessing"]
-        ARTIST_FILTER["Удаление одинаковых артистов и альбомов"]
-        EXPLORATION["Exploration–Exploitation<br/>Добавление разнообразия"]
+        ARTIST_FILTER["Diversification ⚙️artists/albums"]
+        EXPLORATION["Exploration–Exploitation<br/> ⚙️ e-greedy"]
     end
 
     %% === Feature Extraction ===
