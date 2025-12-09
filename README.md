@@ -260,7 +260,7 @@ flowchart LR
     classDef postprocess fill:#f0e5ff,stroke:#b07de6,color:#3d1a5c;
     classDef features fill:#e5ffe5,stroke:#7de67d,color:#1a5c1a;
 
-    class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH, BM25 retrieval;
+    class PopAll,PopUser,SIM,ALS,ITEMKNN,GRAPH,BM25 retrieval;
     class FILTER,DUBLICATE sorting;
     class RANK ranking;
     class ARTIST_FILTER,EXPLORATION postprocess;
