@@ -40,8 +40,6 @@ class DiversificationByArtistAlbum:
         Читаем items_meta из params.datasets.items_meta и строим словари:
         item_id -> artist_id, item_id -> album_id
         """
-        # можно поменять на scan_csv/scan_parquet в зависимости от формата
-        # предположим parquet; при необходимости легко сменить
         lf = pl.scan_parquet(str(self.items_meta_path))
 
         cols = lf.collect().columns
