@@ -119,18 +119,10 @@ class EGreedyTopK:
 
         result = pl.concat([exploit_part, explore_part])
 
-        # если хочешь перемешать финальные позиции:
-        # result = result.sample(frac=1.0, with_replacement=False)
         return result
 
-    # ======== Публичный метод ========
     def apply(self, candidates):
-        """
-        candidates:
-          - list / tuple (считаем уже отсортированным)
-          - pandas.DataFrame c колонкой score_col
-          - polars.DataFrame c колонкой score_col
-        """
+
         if isinstance(candidates, (list, tuple)):
             return self._apply_list(candidates)
         if isinstance(candidates, pd.DataFrame):
@@ -138,5 +130,4 @@ class EGreedyTopK:
         if isinstance(candidates, pl.DataFrame):
             return self._apply_polars(candidates)
 
-        # неизвестный тип — возвращаем как есть
         return candidates
