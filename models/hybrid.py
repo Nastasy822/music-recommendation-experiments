@@ -44,7 +44,19 @@ class HybridModel:
 
 
         self.features = pl.scan_parquet(self.params.datasets.features)
-        self.train_candidates = pl.scan_parquet(self.params.datasets.train.candidates)
+
+        # Берем только 30% от все пользователей, 
+        # чтобы ранжировшик мог работать с новыми пользователями
+        self.train_candidates = (
+            pl.scan_parquet(self.params.datasets.train.candidates)
+            .with_row_index("rand_idx")
+            .with_columns(
+                (pl.col("rand_idx").hash(seed=42) % 10_000_000 / 10_000_000).alias("rand")
+            )
+            .filter(pl.col("rand") < 0.3)
+            .drop(["rand_idx", "rand"])
+        )
+
 
         #чтобы на предсказаниях было побыстрее
         self.test_candidates = pl.scan_parquet(self.params.datasets.test.candidates)
@@ -93,7 +105,9 @@ class HybridModel:
         dataset = self.train_candidates
         # dataset = dataset.set_index([self.user_id_column , self.item_id_column ])
         
+        
         dataset = dataset.join(target_df, on=[self.user_id_column , self.item_id_column ], how="left")
+        
         dataset = dataset.join(self.features, on=[self.user_id_column , self.item_id_column ], how="left") 
         
         dataset = dataset.fill_nan(0)
@@ -107,6 +121,7 @@ class HybridModel:
     
         data = self.create_dataset(train_df)
         
+
         # удаляем кейсы, где нечего ранжировать
         data = data.filter(
                         pl.col(self.weights_column)
@@ -116,8 +131,6 @@ class HybridModel:
 
         data = data.fillna(0)
         
-
-
         X_train, X_test, y_train, y_test, group_train, group_test = train_test_split(
             data[self.list_of_features],
             data[self.weights_column],
