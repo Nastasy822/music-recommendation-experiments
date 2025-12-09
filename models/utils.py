@@ -78,16 +78,18 @@ def merge_data_by_count(df: pl.LazyFrame | pl.DataFrame, last_days: int = 300) -
 def create_target_last_day(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame:
     """Создаёт целевую переменную для последнего дня."""
     max_timestamp = df.select(pl.col("timestamp").max()).collect().item()
-    last_day = max_timestamp - 60 * 60 * 24 * 2
+    last_day = max_timestamp - 60 * 60 * 24 * 5
 
     return (
         df
         .filter(pl.col("event_type") == "listen")
         .filter(pl.col("timestamp") > last_day)
         .filter(pl.col("played_ratio_pct") > 50)
-        .select(["uid", "item_id"])
-        .unique()
-        .with_columns(pl.lit(1).alias("weights"))
+        # .select(["uid", "item_id"])
+        # .unique()
+        # .with_columns(pl.lit(1).alias("weights"))
+        .group_by(["uid", "item_id"])
+        .agg(pl.count().log1p().alias("weights"))
     )
 
 
