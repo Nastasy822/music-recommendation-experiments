@@ -60,15 +60,15 @@ retrieval_models:
 
 # set num of candidats per model
 candidate_generator:
-  MostPopular: 100
-  NewItemsLastNDays: 100
+  MostPopular: 50
+  NewItemsLastNDays: 50
   LastListenRecommender: 0
   ALS: 200
-  BM25: 0
+  BM25: 200
   ItemKNN: 200
   BPR: 0
-  RandomWalkWithRestart: 200
-  KMeansEmbedding: 0
+  RandomWalkWithRestart: 100
+  KMeansEmbedding: 100
 
 
 MostPopular:
@@ -196,3 +196,5 @@ HybridModel:
     - "score_ALS"
     - "score_ItemKNN"
     - "score_RandomWalkWithRestart"
+    - "score_BM25" 
+    - "score_KMeansEmbedding" 
